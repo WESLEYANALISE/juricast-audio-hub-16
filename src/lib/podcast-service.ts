@@ -139,12 +139,15 @@ export async function getEpisodeById(id: number): Promise<PodcastEpisode | null>
 
     if (!data) return null;
     
-    // Format the episode data
+    // Format the episode data with progress and favorite information
+    const progress = await getUserProgress(data.id);
+    const isFavorite = await checkIfFavorite(data.id);
+    
     const episode = {
       ...data,
       tag: Array.isArray(data.tag) ? data.tag : data.tag ? [data.tag] : [],
-      progresso: getUserProgress(data.id)?.progress || 0,
-      favorito: await checkIfFavorite(data.id),
+      progresso: progress?.progress || 0,
+      favorito: isFavorite,
       comentarios: data.comentarios || 0,
       curtidas: data.curtidas || 0,
       data_publicacao: data.data_publicacao || new Date().toLocaleDateString('pt-BR'),
@@ -557,14 +560,25 @@ function getFavoritesData(): Record<number, UserFavorite> {
 }
 
 // Format episodes with additional client-side data
-function formatEpisodes(episodes: SupabaseEpisode[]): PodcastEpisode[] {
-  return episodes.map(episode => ({
-    ...episode,
-    tag: Array.isArray(episode.tag) ? episode.tag : episode.tag ? [episode.tag] : [],
-    progresso: getUserProgress(episode.id)?.progress || 0,
-    favorito: false,  // Will be populated later by calling checkIfFavorite
-    comentarios: episode.comentarios || 0,
-    curtidas: episode.curtidas || 0,
-    data_publicacao: episode.data_publicacao || new Date().toLocaleDateString('pt-BR'),
-  }));
+async function formatEpisodes(episodes: SupabaseEpisode[]): Promise<PodcastEpisode[]> {
+  // Create an array to hold the processed episodes
+  const formattedEpisodes: PodcastEpisode[] = [];
+
+  // Process each episode sequentially
+  for (const episode of episodes) {
+    const progressData = await getUserProgress(episode.id);
+    const isFavorite = await checkIfFavorite(episode.id);
+    
+    formattedEpisodes.push({
+      ...episode,
+      tag: Array.isArray(episode.tag) ? episode.tag : episode.tag ? [episode.tag] : [],
+      progresso: progressData ? progressData.progress : 0,
+      favorito: isFavorite,
+      comentarios: episode.comentarios || 0,
+      curtidas: episode.curtidas || 0,
+      data_publicacao: episode.data_publicacao || new Date().toLocaleDateString('pt-BR'),
+    });
+  }
+  
+  return formattedEpisodes;
 }
