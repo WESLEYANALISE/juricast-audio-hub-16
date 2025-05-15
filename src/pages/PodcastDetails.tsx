@@ -20,7 +20,7 @@ const PodcastDetails = () => {
   const { state, play } = useAudioPlayer();
   const isMobile = useIsMobile();
   const episodeId = parseInt(id || '0');
-  const { data: episode, isLoading } = useQuery({
+  const { data: episode, isLoading, refetch } = useQuery({
     queryKey: ['episode', episodeId],
     queryFn: () => getEpisodeById(episodeId),
     enabled: !!episodeId
@@ -53,18 +53,28 @@ const PodcastDetails = () => {
     }
   }, [episode, play, state.currentEpisode?.id]);
 
-  const handleToggleFavorite = () => {
+  const handleToggleFavorite = async () => {
     if (!episode) return;
-    const newStatus = toggleFavorite(episode.id);
-    setIsFavorite(newStatus);
+    
+    try {
+      const newStatus = await toggleFavorite(episode.id);
+      setIsFavorite(newStatus);
 
-    // Invalidate queries to refresh data
-    queryClient.invalidateQueries({ queryKey: ['favoriteEpisodes'] });
-    queryClient.invalidateQueries({ queryKey: ['episode', episodeId] });
-    toast({
-      title: newStatus ? "Adicionado aos favoritos" : "Removido dos favoritos",
-      description: newStatus ? "Este episódio foi adicionado à sua lista de favoritos." : "Este episódio foi removido da sua lista de favoritos."
-    });
+      // Invalidate queries to refresh data
+      queryClient.invalidateQueries({ queryKey: ['favoriteEpisodes'] });
+      queryClient.invalidateQueries({ queryKey: ['episode', episodeId] });
+      
+      toast({
+        title: newStatus ? "Adicionado aos favoritos" : "Removido dos favoritos",
+        description: newStatus ? "Este episódio foi adicionado à sua lista de favoritos." : "Este episódio foi removido da sua lista de favoritos."
+      });
+    } catch (error) {
+      console.error("Error toggling favorite:", error);
+      toast({
+        title: "Erro ao atualizar favoritos",
+        description: "Ocorreu um erro ao atualizar o status de favorito deste episódio."
+      });
+    }
   };
 
   const handleShareEpisode = () => {
@@ -99,7 +109,7 @@ const PodcastDetails = () => {
 
   if (isLoading) {
     return <MainLayout>
-      <div className="animate-pulse space-y-8 px-4 md:px-0">
+      <div className="animate-pulse space-y-8 px-4 md:px-0 max-w-5xl mx-auto">
         <div className="h-8 bg-juricast-card w-3/4 rounded"></div>
         <div className="grid grid-cols-1 gap-6">
           <div className="bg-juricast-card rounded-lg p-6 h-96"></div>
@@ -111,7 +121,7 @@ const PodcastDetails = () => {
 
   if (!episode) {
     return <MainLayout>
-      <div className="flex flex-col items-center justify-center h-[60vh] px-4 md:px-0">
+      <div className="flex flex-col items-center justify-center h-[60vh] px-4 md:px-0 max-w-5xl mx-auto">
         <h2 className="text-2xl font-bold mb-4">Episódio não encontrado</h2>
         <Link to="/" className="text-juricast-accent hover:underline">
           Voltar para a página inicial
@@ -127,7 +137,7 @@ const PodcastDetails = () => {
 
   return (
     <MainLayout>
-      <motion.div initial="hidden" animate="visible" variants={fadeIn} className="px-4 md:px-0">
+      <motion.div initial="hidden" animate="visible" variants={fadeIn} className="px-4 md:px-0 max-w-5xl mx-auto">
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center">
             <motion.div 
@@ -136,7 +146,7 @@ const PodcastDetails = () => {
             >
               <Link 
                 to="/" 
-                className="mr-4 p-3 md:p-4 bg-juricast-card hover:bg-juricast-accent hover:text-white rounded-full transition-all flex items-center justify-center"
+                className="mr-4 p-3 md:p-4 bg-juricast-card hover:bg-juricast-accent hover:text-white rounded-full transition-all flex items-center justify-center shadow-md"
                 aria-label="Voltar"
               >
                 <ArrowLeft size={isMobile ? 20 : 24} />
@@ -149,7 +159,7 @@ const PodcastDetails = () => {
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
               onClick={handleShareEpisode}
-              className="p-3 rounded-full bg-juricast-card hover:bg-juricast-background/50 transition-colors"
+              className="p-3 rounded-full bg-juricast-card hover:bg-juricast-background/50 transition-colors shadow-md"
               aria-label="Compartilhar"
             >
               <Share2 size={isMobile ? 18 : 20} />
@@ -168,7 +178,7 @@ const PodcastDetails = () => {
           
           {/* Episode Details Second */}
           <motion.div 
-            className="bg-juricast-card rounded-lg p-6 mb-6 border border-juricast-card/30"
+            className="bg-juricast-card rounded-lg p-6 mb-6 border border-juricast-card/30 shadow-lg"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
@@ -182,7 +192,7 @@ const PodcastDetails = () => {
                 <motion.button 
                   onClick={handleToggleFavorite}
                   className={cn(
-                    "p-2 rounded-full transition-colors",
+                    "p-2 rounded-full transition-colors shadow-sm",
                     isFavorite ? "text-juricast-accent" : "text-juricast-muted hover:text-juricast-accent"
                   )}
                   whileHover={{ scale: 1.2 }}
@@ -207,7 +217,7 @@ const PodcastDetails = () => {
                   {Array.isArray(episode.tag) && episode.tag.map((tag: string, index: number) => (
                     <motion.span 
                       key={index}
-                      className="bg-juricast-background/50 px-2 py-1 rounded-full text-xs md:text-sm border border-juricast-card/30"
+                      className="bg-juricast-background/50 px-2 py-1 rounded-full text-xs md:text-sm border border-juricast-card/30 shadow-sm"
                       initial={{ opacity: 0, scale: 0.8 }}
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{

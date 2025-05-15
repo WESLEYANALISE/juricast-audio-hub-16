@@ -3145,6 +3145,57 @@ export type Database = {
         }
         Relationships: []
       }
+      podcast_favorites: {
+        Row: {
+          created_at: string
+          episode_id: number
+          id: string
+          user_ip: string
+        }
+        Insert: {
+          created_at?: string
+          episode_id: number
+          id?: string
+          user_ip: string
+        }
+        Update: {
+          created_at?: string
+          episode_id?: number
+          id?: string
+          user_ip?: string
+        }
+        Relationships: []
+      }
+      podcast_history: {
+        Row: {
+          created_at: string
+          current_position: number | null
+          episode_id: number
+          id: string
+          progress_percent: number | null
+          updated_at: string
+          user_ip: string
+        }
+        Insert: {
+          created_at?: string
+          current_position?: number | null
+          episode_id: number
+          id?: string
+          progress_percent?: number | null
+          updated_at?: string
+          user_ip: string
+        }
+        Update: {
+          created_at?: string
+          current_position?: number | null
+          episode_id?: number
+          id?: string
+          progress_percent?: number | null
+          updated_at?: string
+          user_ip?: string
+        }
+        Relationships: []
+      }
       podcast_likes: {
         Row: {
           created_at: string | null

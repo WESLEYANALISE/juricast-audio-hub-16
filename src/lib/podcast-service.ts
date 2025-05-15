@@ -144,7 +144,7 @@ export async function getEpisodeById(id: number): Promise<PodcastEpisode | null>
       ...data,
       tag: Array.isArray(data.tag) ? data.tag : data.tag ? [data.tag] : [],
       progresso: getUserProgress(data.id)?.progress || 0,
-      favorito: getUserFavorite(data.id)?.isFavorite || false,
+      favorito: await checkIfFavorite(data.id),
       comentarios: data.comentarios || 0,
       curtidas: data.curtidas || 0,
       data_publicacao: data.data_publicacao || new Date().toLocaleDateString('pt-BR'),
@@ -285,69 +285,35 @@ export async function getRecentEpisodes(): Promise<PodcastEpisode[]> {
   );
 }
 
-// Local storage for progress management
-export function saveEpisodeProgress(episodeId: number, progress: number, position: number = 0): void {
+// Supabase integration for favorites
+export async function toggleFavorite(episodeId: number): Promise<boolean> {
   try {
-    const progressData = getProgressData();
-    progressData[episodeId] = { 
-      episodeId, 
-      progress, 
-      lastPosition: position 
-    };
-    localStorage.setItem(PROGRESS_STORAGE_KEY, JSON.stringify(progressData));
-  } catch (error) {
-    console.error("Error saving episode progress:", error);
-  }
-}
-
-export function getUserProgress(episodeId: number): UserProgress | null {
-  try {
-    const progressData = getProgressData();
-    return progressData[episodeId] || null;
-  } catch (error) {
-    console.error("Error getting user progress:", error);
-    return null;
-  }
-}
-
-export function getInProgressEpisodes(): Promise<PodcastEpisode[]> {
-  try {
-    const progressData = getProgressData();
-    const episodeIds = Object.keys(progressData).map(Number);
+    const userIp = getUserIP();
+    const isFavorite = await checkIfFavorite(episodeId);
     
-    return getAllEpisodes().then(episodes => 
-      episodes.filter(episode => 
-        episodeIds.includes(episode.id) && 
-        progressData[episode.id].progress > 0 && 
-        progressData[episode.id].progress < 100
-      )
-    );
+    if (isFavorite) {
+      // Remove favorite
+      const { error } = await supabase
+        .from('podcast_favorites')
+        .delete()
+        .eq('episode_id', episodeId)
+        .eq('user_ip', userIp);
+        
+      if (error) throw error;
+      return false;
+    } else {
+      // Add favorite
+      const { error } = await supabase
+        .from('podcast_favorites')
+        .insert({ episode_id: episodeId, user_ip: userIp });
+        
+      if (error) throw error;
+      return true;
+    }
   } catch (error) {
-    console.error("Error getting in-progress episodes:", error);
-    return Promise.resolve([]);
-  }
-}
-
-export function getCompletedEpisodes(): Promise<PodcastEpisode[]> {
-  try {
-    const progressData = getProgressData();
-    const episodeIds = Object.keys(progressData).map(Number);
+    console.error("Error toggling favorite:", error);
     
-    return getAllEpisodes().then(episodes => 
-      episodes.filter(episode => 
-        episodeIds.includes(episode.id) && 
-        progressData[episode.id].progress === 100
-      )
-    );
-  } catch (error) {
-    console.error("Error getting completed episodes:", error);
-    return Promise.resolve([]);
-  }
-}
-
-// Local storage for favorites management
-export function toggleFavorite(episodeId: number): boolean {
-  try {
+    // Fallback to localStorage if Supabase fails
     const favoritesData = getFavoritesData();
     const isFavorite = favoritesData[episodeId]?.isFavorite || false;
     
@@ -358,9 +324,30 @@ export function toggleFavorite(episodeId: number): boolean {
     localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(favoritesData));
     
     return !isFavorite;
+  }
+}
+
+export async function checkIfFavorite(episodeId: number): Promise<boolean> {
+  try {
+    const userIp = getUserIP();
+    const { data, error } = await supabase
+      .from('podcast_favorites')
+      .select('*')
+      .eq('episode_id', episodeId)
+      .eq('user_ip', userIp)
+      .single();
+    
+    if (error && error.code !== 'PGRST116') {
+      throw error;
+    }
+    
+    return !!data;
   } catch (error) {
-    console.error("Error toggling favorite:", error);
-    return false;
+    console.error("Error checking favorite status:", error);
+    
+    // Fallback to localStorage
+    const favoritesData = getFavoritesData();
+    return favoritesData[episodeId]?.isFavorite || false;
   }
 }
 
@@ -374,23 +361,183 @@ export function getUserFavorite(episodeId: number): UserFavorite | null {
   }
 }
 
-export function getFavoriteEpisodes(): Promise<PodcastEpisode[]> {
+export async function getFavoriteEpisodes(): Promise<PodcastEpisode[]> {
   try {
-    const favoritesData = getFavoritesData();
-    const favoriteIds = Object.keys(favoritesData)
-      .map(Number)
-      .filter(id => favoritesData[id].isFavorite);
+    const userIp = getUserIP();
+    const { data: favorites, error } = await supabase
+      .from('podcast_favorites')
+      .select('episode_id')
+      .eq('user_ip', userIp);
+    
+    if (error) throw error;
+    
+    const favoriteIds = favorites.map(fav => fav.episode_id);
     
     return getAllEpisodes().then(episodes => 
       episodes.filter(episode => favoriteIds.includes(episode.id))
     );
   } catch (error) {
-    console.error("Error getting favorite episodes:", error);
-    return Promise.resolve([]);
+    console.error("Error getting favorite episodes from Supabase:", error);
+    
+    // Fallback to localStorage
+    try {
+      const favoritesData = getFavoritesData();
+      const favoriteIds = Object.keys(favoritesData)
+        .map(Number)
+        .filter(id => favoritesData[id].isFavorite);
+      
+      return getAllEpisodes().then(episodes => 
+        episodes.filter(episode => favoriteIds.includes(episode.id))
+      );
+    } catch (error) {
+      console.error("Error getting favorite episodes:", error);
+      return Promise.resolve([]);
+    }
   }
 }
 
-// Helper functions
+// Progress tracking with Supabase
+export async function saveEpisodeProgress(episodeId: number, progress: number, position: number = 0): Promise<void> {
+  try {
+    const userIp = getUserIP();
+    const { error } = await supabase
+      .from('podcast_history')
+      .upsert({
+        episode_id: episodeId,
+        user_ip: userIp,
+        progress_percent: progress,
+        current_position: position,
+        updated_at: new Date().toISOString()
+      })
+      .select();
+    
+    if (error) throw error;
+  } catch (error) {
+    console.error("Error saving episode progress to Supabase:", error);
+    
+    // Fallback to localStorage
+    try {
+      const progressData = getProgressData();
+      progressData[episodeId] = { 
+        episodeId, 
+        progress, 
+        lastPosition: position 
+      };
+      localStorage.setItem(PROGRESS_STORAGE_KEY, JSON.stringify(progressData));
+    } catch (error) {
+      console.error("Error saving episode progress:", error);
+    }
+  }
+}
+
+export async function getUserProgress(episodeId: number): Promise<UserProgress | null> {
+  try {
+    const userIp = getUserIP();
+    const { data, error } = await supabase
+      .from('podcast_history')
+      .select('*')
+      .eq('episode_id', episodeId)
+      .eq('user_ip', userIp)
+      .single();
+    
+    if (error && error.code !== 'PGRST116') {
+      throw error;
+    }
+    
+    if (!data) {
+      // Fallback to localStorage
+      const progressData = getProgressData();
+      return progressData[episodeId] || null;
+    }
+    
+    return {
+      episodeId,
+      progress: data.progress_percent,
+      lastPosition: data.current_position
+    };
+  } catch (error) {
+    console.error("Error getting user progress:", error);
+    
+    // Fallback to localStorage
+    const progressData = getProgressData();
+    return progressData[episodeId] || null;
+  }
+}
+
+export async function getInProgressEpisodes(): Promise<PodcastEpisode[]> {
+  try {
+    const userIp = getUserIP();
+    const { data, error } = await supabase
+      .from('podcast_history')
+      .select('episode_id, progress_percent')
+      .eq('user_ip', userIp)
+      .gt('progress_percent', 0)
+      .lt('progress_percent', 100);
+    
+    if (error) throw error;
+    
+    const episodeIds = data.map(item => item.episode_id);
+    
+    return getAllEpisodes().then(episodes => 
+      episodes.filter(episode => episodeIds.includes(episode.id))
+    );
+  } catch (error) {
+    console.error("Error getting in-progress episodes from Supabase:", error);
+    
+    // Fallback to localStorage
+    try {
+      const progressData = getProgressData();
+      const episodeIds = Object.keys(progressData).map(Number).filter(id => 
+        progressData[id].progress > 0 && progressData[id].progress < 100
+      );
+      
+      return getAllEpisodes().then(episodes => 
+        episodes.filter(episode => episodeIds.includes(episode.id))
+      );
+    } catch (error) {
+      console.error("Error getting in-progress episodes:", error);
+      return Promise.resolve([]);
+    }
+  }
+}
+
+export async function getCompletedEpisodes(): Promise<PodcastEpisode[]> {
+  try {
+    const userIp = getUserIP();
+    const { data, error } = await supabase
+      .from('podcast_history')
+      .select('episode_id')
+      .eq('user_ip', userIp)
+      .eq('progress_percent', 100);
+    
+    if (error) throw error;
+    
+    const episodeIds = data.map(item => item.episode_id);
+    
+    return getAllEpisodes().then(episodes => 
+      episodes.filter(episode => episodeIds.includes(episode.id))
+    );
+  } catch (error) {
+    console.error("Error getting completed episodes from Supabase:", error);
+    
+    // Fallback to localStorage
+    try {
+      const progressData = getProgressData();
+      const episodeIds = Object.keys(progressData)
+        .map(Number)
+        .filter(id => progressData[id].progress === 100);
+      
+      return getAllEpisodes().then(episodes => 
+        episodes.filter(episode => episodeIds.includes(episode.id))
+      );
+    } catch (error) {
+      console.error("Error getting completed episodes:", error);
+      return Promise.resolve([]);
+    }
+  }
+}
+
+// Helper functions for localStorage fallbacks
 function getProgressData(): Record<number, UserProgress> {
   try {
     const data = localStorage.getItem(PROGRESS_STORAGE_KEY);
@@ -415,7 +562,7 @@ function formatEpisodes(episodes: SupabaseEpisode[]): PodcastEpisode[] {
     ...episode,
     tag: Array.isArray(episode.tag) ? episode.tag : episode.tag ? [episode.tag] : [],
     progresso: getUserProgress(episode.id)?.progress || 0,
-    favorito: getUserFavorite(episode.id)?.isFavorite || false,
+    favorito: false,  // Will be populated later by calling checkIfFavorite
     comentarios: episode.comentarios || 0,
     curtidas: episode.curtidas || 0,
     data_publicacao: episode.data_publicacao || new Date().toLocaleDateString('pt-BR'),
