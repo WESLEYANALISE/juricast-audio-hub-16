@@ -50,7 +50,10 @@ export async function getAllEpisodes(): Promise<PodcastEpisode[]> {
 function ensureTagsAreArrays(episodes: any[]): SupabaseEpisode[] {
   return episodes.map(episode => ({
     ...episode,
-    tag: Array.isArray(episode.tag) ? episode.tag : episode.tag ? [episode.tag] : []
+    tag: Array.isArray(episode.tag) ? episode.tag : episode.tag ? [episode.tag] : [],
+    comentarios: episode.comentarios || 0,
+    curtidas: episode.curtidas || 0,
+    data_publicacao: episode.data_publicacao || new Date().toLocaleDateString('pt-BR')
   }));
 }
 
@@ -140,13 +143,13 @@ export async function getEpisodeById(id: number): Promise<PodcastEpisode | null>
     if (!data) return null;
     
     // Format the episode data with progress and favorite information
-    const progress = await getUserProgress(data.id);
+    const progressData = await getUserProgress(data.id);
     const isFavorite = await checkIfFavorite(data.id);
     
     const episode = {
       ...data,
       tag: Array.isArray(data.tag) ? data.tag : data.tag ? [data.tag] : [],
-      progresso: progress?.progress || 0,
+      progresso: progressData?.progress || 0,
       favorito: isFavorite,
       comentarios: data.comentarios || 0,
       curtidas: data.curtidas || 0,

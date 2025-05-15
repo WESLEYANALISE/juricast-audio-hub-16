@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useReducer, useEffect, useRef } from 'react';
 import { AudioPlayerContextType, AudioPlayerState, PodcastEpisode } from '@/lib/types';
 import { saveEpisodeProgress, getEpisodesByArea } from '@/lib/podcast-service';
@@ -132,7 +131,7 @@ const AudioPlayerContext = createContext<AudioPlayerContextType | undefined>(und
 let globalAudioElement: HTMLAudioElement | null = null;
 
 // Provider component
-export function AudioPlayerProvider({ children }: { children: React.ReactNode }) {
+export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ children }) => {
   const [state, dispatch] = useReducer(audioPlayerReducer, initialState);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const queryClient = useQueryClient();
@@ -311,6 +310,14 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
   // Context methods
   const play = (episode: PodcastEpisode) => {
     dispatch({ type: 'PLAY', payload: episode });
+    // Notify with toast
+    if (episode.titulo) {
+      toast({
+        title: "Reproduzindo",
+        description: episode.titulo,
+        variant: "default"
+      });
+    }
   };
 
   const pause = () => {

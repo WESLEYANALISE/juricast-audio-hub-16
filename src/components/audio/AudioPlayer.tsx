@@ -63,9 +63,9 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
       ];
       
       if (isPlaying) {
-        // Add subtle variations to the waveform when playing
+        // Add more dynamic variations to the waveform when playing
         const data = baseValues.map(value => {
-          const variation = Math.random() * 0.1 - 0.05; // Small random variation
+          const variation = Math.random() * 0.2 - 0.1; // Larger random variation
           return Math.max(0.1, Math.min(1, value + variation));
         });
         setWaveformData(data);
@@ -75,10 +75,10 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
       }
     };
     
-    // Update the waveform visualization
+    // Update the waveform visualization more frequently
     generateWaveform();
     if (isPlaying) {
-      waveformInterval.current = window.setInterval(generateWaveform, 300);
+      waveformInterval.current = window.setInterval(generateWaveform, 150);
     }
     
     return () => {
@@ -119,9 +119,11 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
   const handleDownload = () => {
     if (!src) return;
     
-    // Create an anchor element and trigger download
+    // Create an anchor element with target="_blank" to open in a new tab/window
     const a = document.createElement('a');
     a.href = src;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
     a.download = `${title.replace(/\s+/g, '_')}.mp3`;
     document.body.appendChild(a);
     a.click();
@@ -154,33 +156,40 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
               className="w-full h-full object-cover"
             />
             
-            {/* Professional waveform overlay */}
-            <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-              <div className="absolute inset-x-4 bottom-8 flex items-end justify-center h-16">
-                {waveformData.map((value, idx) => (
-                  <motion.div
-                    key={idx}
-                    className="w-1 mx-[1px] bg-white/80 rounded-full"
-                    style={{ height: `${value * 100}%` }}
-                    initial={{ height: 0 }}
-                    animate={{ height: `${value * 100}%` }}
-                    transition={{ duration: 0.2 }}
-                  />
-                ))}
-              </div>
-              
-              {/* Play/Pause button overlay */}
-              {!isPlaying && (
+            {/* Professional waveform overlay - Moved to the top with enhanced animation */}
+            <div className="absolute inset-x-0 top-0 h-16 bg-black/40 flex items-end justify-center">
+              {waveformData.map((value, idx) => (
+                <motion.div
+                  key={idx}
+                  className="w-1 mx-[1px] bg-white/80 rounded-full"
+                  style={{ height: `${value * 100}%` }}
+                  initial={{ height: 0 }}
+                  animate={{ height: `${value * 100}%` }}
+                  transition={{ duration: 0.1 }}
+                />
+              ))}
+            </div>
+            
+            {/* Play/Pause button overlay */}
+            <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+              {isPlaying ? (
                 <motion.div 
-                  className="absolute inset-0 flex items-center justify-center"
+                  className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <Pause className="text-white" size={32} />
+                </motion.div>
+              ) : (
+                <motion.div 
+                  className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.2 }}
                 >
-                  <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center">
-                    <Play className="text-white ml-1" size={32} />
-                  </div>
+                  <Play className="text-white ml-1" size={32} />
                 </motion.div>
               )}
             </div>

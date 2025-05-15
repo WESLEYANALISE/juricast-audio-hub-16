@@ -8,12 +8,12 @@ export interface PodcastEpisode {
   tag: string[];
   url_audio: string;
   imagem_miniatura: string;
-  sequencia?: string;
-  data_publicacao?: string;
-  favorito?: boolean;
-  comentarios?: number;
-  curtidas?: number;
-  progresso?: number;
+  sequencia: string;
+  progresso: number;
+  favorito: boolean;
+  comentarios: number;
+  curtidas: number;
+  data_publicacao: string;
 }
 
 export interface UserProgress {
@@ -30,46 +30,17 @@ export interface UserFavorite {
 export interface AreaCard {
   id: number;
   name: string;
+  episodeCount: number;
   slug: string;
-  image?: string;
-  episodeCount?: number;
+  image: string;
 }
 
 export interface ThemeCard {
   name: string;
-  slug: string;
   episodeCount: number;
+  slug: string;
   area: string;
   image: string;
-}
-
-export interface AudioPlayerState {
-  isPlaying: boolean;
-  currentEpisode: PodcastEpisode | null;
-  volume: number;
-  isMuted: boolean;
-  duration: number;
-  currentTime: number;
-  playbackRate: number;
-  showMiniPlayer: boolean;
-  queue: PodcastEpisode[];
-}
-
-export interface AudioPlayerContextType {
-  state: AudioPlayerState;
-  play: (episode: PodcastEpisode) => void;
-  pause: () => void;
-  resume: () => void;
-  setVolume: (volume: number) => void;
-  toggleMute: () => void;
-  seekTo: (time: number) => void;
-  setPlaybackRate: (rate: number) => void;
-  skipForward: (seconds?: number) => void;
-  skipBackward: (seconds?: number) => void;
-  addToQueue: (episode: PodcastEpisode) => void;
-  removeFromQueue: (episodeId: number) => void;
-  clearQueue: () => void;
-  closeMiniPlayer: () => void;
 }
 
 export interface SupabaseEpisode {
@@ -78,11 +49,11 @@ export interface SupabaseEpisode {
   descricao: string;
   area: string;
   tema: string;
-  tag: string[];
+  tag: string | string[];
   url_audio: string;
   imagem_miniatura: string;
-  sequencia?: string;
-  data_publicacao?: string;
+  sequencia: string;
   comentarios?: number;
   curtidas?: number;
+  data_publicacao?: string;
 }
