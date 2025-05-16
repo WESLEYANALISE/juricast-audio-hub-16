@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect, useRef } from 'react';
-import { AudioPlayerContextType, AudioPlayerState, PodcastEpisode } from '@/lib/types';
+import { AudioPlayerContextType, AudioPlayerState, PodcastEpisode, AudioPlayerProviderProps } from '@/lib/types';
 import { saveEpisodeProgress, getEpisodesByArea } from '@/lib/podcast-service';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/hooks/use-toast';
@@ -14,6 +14,7 @@ const initialState: AudioPlayerState = {
   currentTime: 0,
   playbackRate: 1,
   showMiniPlayer: false,
+  isLoading: false,
   queue: [],
 };
 
@@ -336,12 +337,14 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
     dispatch({ type: 'TOGGLE_MUTE' });
   };
 
-  const seekTo = (time: number) => {
+  const seek = (time: number) => {
     if (audioRef.current) {
       audioRef.current.currentTime = time;
       dispatch({ type: 'SET_CURRENT_TIME', payload: time });
     }
   };
+
+  const seekTo = seek;
 
   const setPlaybackRate = (rate: number) => {
     dispatch({ type: 'SET_PLAYBACK_RATE', payload: rate });
@@ -388,6 +391,31 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
     dispatch({ type: 'STOP' });
   };
 
+  const togglePlay = () => {
+    if (state.isPlaying) {
+      pause();
+    } else {
+      resume();
+    }
+  };
+
+  const stop = () => {
+    dispatch({ type: 'STOP' });
+  };
+
+  const playNext = () => {
+    if (state.queue.length > 0) {
+      const nextEpisode = state.queue[0];
+      play(nextEpisode);
+      removeFromQueue(nextEpisode.id);
+    }
+  };
+
+  const playPrevious = () => {
+    // Implementation for playing previous track if needed
+    console.log('Play previous not implemented yet');
+  };
+
   const value: AudioPlayerContextType = {
     state,
     play,
@@ -395,14 +423,19 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
     resume,
     setVolume,
     toggleMute,
-    seekTo,
+    seek,
     setPlaybackRate,
     skipForward,
     skipBackward,
     addToQueue,
     removeFromQueue,
     clearQueue,
-    closeMiniPlayer
+    closeMiniPlayer,
+    seekTo,
+    togglePlay,
+    stop,
+    playNext,
+    playPrevious
   };
 
   return (

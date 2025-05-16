@@ -1,3 +1,4 @@
+
 export interface PodcastEpisode {
   id: number;
   titulo: string;
@@ -66,7 +67,8 @@ export interface AudioPlayerState {
   volume: number;
   isMuted: boolean;
   isLoading: boolean;
-  isMinimized: boolean;
+  showMiniPlayer: boolean;
+  playbackRate: number;
   queue: PodcastEpisode[];
 }
 
@@ -83,6 +85,15 @@ export interface AudioPlayerContextType {
   playNext: () => void;
   playPrevious: () => void;
   addToQueue: (episode: PodcastEpisode) => void;
+  removeFromQueue: (episodeId: number) => void;
   clearQueue: () => void;
-  toggleMinimize: () => void;
+  closeMiniPlayer: () => void;
+  skipForward: (seconds?: number) => void;
+  skipBackward: (seconds?: number) => void;
+  seekTo: (time: number) => void;
+  setPlaybackRate: (rate: number) => void;
+}
+
+export interface AudioPlayerProviderProps {
+  children: React.ReactNode;
 }
