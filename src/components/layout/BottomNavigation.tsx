@@ -11,7 +11,7 @@ const BottomNavigation = () => {
 
   const navItems = [
     { icon: Home, label: "Home", href: "/" },
-    { icon: Clock, label: "Progresso", href: "/em-progresso" },
+    { icon: Clock, label: "Novos", href: "/episodios-novos" },
     { icon: Check, label: "Concluídos", href: "/concluidos" },
     { icon: Heart, label: "Favoritos", href: "/favoritos" },
     { icon: List, label: "Categorias", href: "/?sort=categorias" }
@@ -19,17 +19,18 @@ const BottomNavigation = () => {
 
   return (
     <motion.div 
-      className="floating-bottom-nav"
+      className="fixed bottom-0 left-0 right-0 pb-safe z-50 sm:hidden"
       initial={{ y: 100, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.3, delay: 0.3 }}
     >
       <motion.div 
-        className="glassmorphism py-3 px-2 rounded-full shadow-xl flex justify-around items-center"
+        className="glassmorphism mx-4 mb-4 py-3 px-2 rounded-full shadow-xl flex justify-around items-center"
         whileHover={{ y: -2 }}
       >
         {navItems.map((item) => {
-          const isActive = path === item.href || 
+          const isActive = (path === item.href) || 
+                        (item.href === "/episodios-novos" && path.includes("/episodios-novos")) ||
                         (item.href === "/?sort=categorias" && path.includes("/categoria"));
           const Icon = item.icon;
           

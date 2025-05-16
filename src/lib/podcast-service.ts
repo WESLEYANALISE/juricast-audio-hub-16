@@ -283,11 +283,52 @@ export async function getFeaturedEpisodes(): Promise<PodcastEpisode[]> {
 
 // Get recent episodes
 export async function getRecentEpisodes(): Promise<PodcastEpisode[]> {
-  return getAllEpisodes().then(episodes => 
-    episodes
-      .sort((a, b) => (b.sequencia || '').localeCompare(a.sequencia || ''))
-      .slice(0, 6)
-  );
+  return getAllEpisodes().then(episodes => {
+    // Parse dates and sort by publication date (newest first)
+    return episodes
+      .map(episode => ({
+        ...episode,
+        parsedDate: parsePublicationDate(episode.data_publicacao)
+      }))
+      .sort((a, b) => {
+        // First try sorting by the parsed date
+        if (a.parsedDate && b.parsedDate) {
+          return b.parsedDate.getTime() - a.parsedDate.getTime();
+        }
+        
+        // Fall back to sequence if dates can't be parsed
+        return (b.sequencia || '').localeCompare(a.sequencia || '');
+      })
+      .slice(0, 8); // Increase to show more recent episodes
+  });
+}
+
+// Helper function to parse different date formats
+function parsePublicationDate(dateString?: string): Date | null {
+  if (!dateString) return null;
+  
+  try {
+    // Try standard date parsing first
+    const date = new Date(dateString);
+    
+    // Check if the result is a valid date
+    if (!isNaN(date.getTime())) {
+      return date;
+    }
+    
+    // Try parsing Brazilian format (dd/mm/yyyy)
+    const parts = dateString.split('/');
+    if (parts.length === 3) {
+      const day = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1; // Months are 0-based
+      const year = parseInt(parts[2], 10);
+      return new Date(year, month, day);
+    }
+  } catch (error) {
+    console.error("Error parsing date:", error);
+  }
+  
+  return null;
 }
 
 // Supabase integration for favorites

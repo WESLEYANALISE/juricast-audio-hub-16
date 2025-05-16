@@ -1,12 +1,12 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { getRecentEpisodes } from '@/lib/podcast-service';
 import { PodcastEpisode } from '@/lib/types';
-import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
+import { OptimizedImage } from '@/components/ui/optimized-image';
 
 const NewEpisodesCarousel: React.FC = () => {
   const { data: recentEpisodes = [], isLoading } = useQuery({
@@ -45,6 +45,7 @@ const NewEpisodesCarousel: React.FC = () => {
                 key={episode.id}
                 className="flex-shrink-0 w-64"
                 variants={itemVariants}
+                whileHover={{ scale: 1.05, transition: { duration: 0.2 } }}
               >
                 <EpisodeCard episode={episode} />
               </motion.div>
@@ -60,53 +61,53 @@ interface EpisodeCardProps {
 }
 
 const EpisodeCard: React.FC<EpisodeCardProps> = ({ episode }) => {
-  const [imageLoaded, setImageLoaded] = useState(false);
-  const [imageError, setImageError] = useState(false);
-
-  const handleImageLoad = () => {
-    setImageLoaded(true);
-  };
-
-  const handleImageError = () => {
-    setImageError(true);
-    setImageLoaded(true);
-  };
-
   // Check if episode is new (published in the last 7 days)
   const isNew = () => {
     if (!episode.data_publicacao) return false;
     
-    const publishDate = new Date(episode.data_publicacao);
-    const currentDate = new Date();
-    const diffTime = currentDate.getTime() - publishDate.getTime();
-    const diffDays = diffTime / (1000 * 3600 * 24);
+    try {
+      // First try to parse as ISO date
+      const publishDate = new Date(episode.data_publicacao);
+      const currentDate = new Date();
+      
+      // Check if valid date object was created
+      if (isNaN(publishDate.getTime())) {
+        // Try to parse BR format (dd/mm/yyyy)
+        const parts = episode.data_publicacao.split('/');
+        if (parts.length === 3) {
+          const day = parseInt(parts[0], 10);
+          const month = parseInt(parts[1], 10) - 1;
+          const year = parseInt(parts[2], 10);
+          const parsedDate = new Date(year, month, day);
+          
+          const diffTime = currentDate.getTime() - parsedDate.getTime();
+          const diffDays = diffTime / (1000 * 3600 * 24);
+          return diffDays <= 7;
+        }
+      } else {
+        const diffTime = currentDate.getTime() - publishDate.getTime();
+        const diffDays = diffTime / (1000 * 3600 * 24);
+        return diffDays <= 7;
+      }
+    } catch (error) {
+      console.error("Error parsing date:", error);
+    }
     
-    return diffDays <= 7;
+    return false;
   };
-
-  const placeholderImage = '/placeholder.svg';
 
   return (
     <Link 
       to={`/podcast/${episode.id}`}
-      className="block bg-juricast-card rounded-lg overflow-hidden transform transition-transform duration-300 hover:scale-105 hover:shadow-lg"
+      className="block bg-juricast-card rounded-lg overflow-hidden transform transition-transform duration-300 hover:shadow-lg h-full"
     >
       <div className="relative h-32">
-        {!imageLoaded && (
-          <Skeleton className="h-full w-full absolute inset-0" />
-        )}
-        <img 
-          src={imageError ? placeholderImage : episode.imagem_miniatura} 
+        <OptimizedImage
+          src={episode.imagem_miniatura}
           alt={episode.titulo}
-          className={cn(
-            "w-full h-full object-cover",
-            !imageLoaded && "invisible",
-            imageLoaded && "visible"
-          )}
-          loading="eager"
+          className="w-full h-full"
+          aspectRatio="aspect-video"
           fetchPriority="high"
-          onLoad={handleImageLoad}
-          onError={handleImageError}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
         <div className="absolute bottom-2 left-2 right-2">
@@ -126,11 +127,11 @@ const EpisodeCard: React.FC<EpisodeCardProps> = ({ episode }) => {
 const EpisodeCardSkeleton: React.FC = () => {
   return (
     <div className="flex-shrink-0 w-64">
-      <div className="bg-juricast-card rounded-lg overflow-hidden">
-        <Skeleton className="h-32 w-full" />
+      <div className="bg-juricast-card rounded-lg overflow-hidden h-full">
+        <div className="h-32 w-full bg-juricast-card/50 animate-pulse" />
         <div className="p-3 space-y-2">
-          <Skeleton className="h-4 w-full" />
-          <Skeleton className="h-3 w-2/3" />
+          <div className="h-4 w-full bg-juricast-card/50 animate-pulse rounded" />
+          <div className="h-3 w-2/3 bg-juricast-card/50 animate-pulse rounded" />
         </div>
       </div>
     </div>

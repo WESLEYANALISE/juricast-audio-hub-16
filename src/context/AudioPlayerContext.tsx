@@ -408,6 +408,10 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
       const nextEpisode = state.queue[0];
       play(nextEpisode);
       removeFromQueue(nextEpisode.id);
+      toast({
+        title: "Reproduzindo próximo episódio",
+        description: nextEpisode.titulo,
+      });
     }
   };
 
