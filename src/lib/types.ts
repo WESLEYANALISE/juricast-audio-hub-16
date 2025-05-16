@@ -1,5 +1,3 @@
-
-
 export interface PodcastEpisode {
   id: number;
   titulo: string;
@@ -98,4 +96,3 @@ export interface AudioPlayerContextType {
 export interface AudioPlayerProviderProps {
   children: React.ReactNode;
 }
-
