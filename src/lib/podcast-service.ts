@@ -577,7 +577,7 @@ async function formatEpisodes(episodes: SupabaseEpisode[]): Promise<PodcastEpiso
       tag: Array.isArray(episode.tag) ? episode.tag : episode.tag ? [episode.tag] : [],
       progresso: progressData ? progressData.progress : 0,
       favorito: isFavorite,
-      comentarios: episode.comentarios || 0,
+      comentarios: episode.comentarios || 0, 
       curtidas: episode.curtidas || 0,
       data_publicacao: episode.data_publicacao || new Date().toLocaleDateString('pt-BR'),
     });

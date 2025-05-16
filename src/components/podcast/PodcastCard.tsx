@@ -1,8 +1,10 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Heart, Play, File, Gavel, Scale, Book, Sparkles } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface PodcastCardProps {
   id: number;
@@ -24,6 +26,9 @@ const PodcastCard: React.FC<PodcastCardProps> = ({
   likes = 0,
   thumbnail
 }) => {
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageError, setImageError] = useState(false);
+
   // Helper function to return appropriate area icon
   const getAreaIcon = () => {
     const areaLower = area.toLowerCase();
@@ -43,6 +48,18 @@ const PodcastCard: React.FC<PodcastCardProps> = ({
     animationDelay: `${Math.random() * 5}s`,
     animationDuration: `${Math.random() * 3 + 5}s`,
   }));
+
+  const handleImageLoad = () => {
+    setImageLoaded(true);
+  };
+
+  const handleImageError = () => {
+    setImageError(true);
+    setImageLoaded(true);
+  };
+
+  // Placeholder image URL if the original fails to load
+  const placeholderImage = '/placeholder.svg';
 
   return (
     <motion.div
@@ -84,11 +101,22 @@ const PodcastCard: React.FC<PodcastCardProps> = ({
 
       <Link to={`/podcast/${id}`} className="block">
         <div className="netflix-card group bg-juricast-card">
-          <div className="relative overflow-hidden">
+          <div className="relative overflow-hidden h-48">
+            {!imageLoaded && (
+              <Skeleton className="h-full w-full absolute inset-0" />
+            )}
             <img 
-              src={thumbnail} 
+              src={imageError ? placeholderImage : thumbnail} 
               alt={title} 
-              className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
+              className={cn(
+                "w-full h-48 object-cover group-hover:scale-105 transition-transform duration-500 ease-out",
+                !imageLoaded && "invisible", 
+                imageLoaded && "visible"
+              )}
+              loading="lazy"
+              onLoad={handleImageLoad}
+              onError={handleImageError}
+              fetchPriority="high"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
               <div className="absolute bottom-4 left-4 right-4">
@@ -163,4 +191,4 @@ const PodcastCard: React.FC<PodcastCardProps> = ({
   );
 };
 
-export default PodcastCard;
+export default React.memo(PodcastCard);

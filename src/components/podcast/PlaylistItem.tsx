@@ -1,11 +1,12 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Play, Heart, Pause, Gavel, Book, Scale, File, Check } from 'lucide-react';
 import { PodcastEpisode } from '@/lib/types';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { toggleFavorite } from '@/lib/podcast-service';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface PlaylistItemProps {
   episode: PodcastEpisode;
@@ -20,6 +21,9 @@ const PlaylistItem: React.FC<PlaylistItemProps> = ({
   isPlaying = false,
   onPlay 
 }) => {
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageError, setImageError] = useState(false);
+
   const handleToggleFavorite = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -30,6 +34,15 @@ const PlaylistItem: React.FC<PlaylistItemProps> = ({
     e.preventDefault();
     e.stopPropagation();
     if (onPlay) onPlay();
+  };
+
+  const handleImageLoad = () => {
+    setImageLoaded(true);
+  };
+
+  const handleImageError = () => {
+    setImageError(true);
+    setImageLoaded(true);
   };
 
   // Helper function to return appropriate area icon
@@ -45,6 +58,18 @@ const PlaylistItem: React.FC<PlaylistItemProps> = ({
   // Check if episode is completed (100%)
   const isCompleted = episode.progresso === 100;
 
+  // Check if episode is new (published in the last 7 days)
+  const isNew = () => {
+    if (!episode.data_publicacao) return false;
+    
+    const publishDate = new Date(episode.data_publicacao);
+    const currentDate = new Date();
+    const diffTime = currentDate.getTime() - publishDate.getTime();
+    const diffDays = diffTime / (1000 * 3600 * 24);
+    
+    return diffDays <= 7;
+  };
+
   // Animation variants
   const itemVariants = {
     hidden: { opacity: 0, y: 20 },
@@ -54,6 +79,8 @@ const PlaylistItem: React.FC<PlaylistItemProps> = ({
       transition: { duration: 0.3 } 
     }
   };
+
+  const placeholderImage = '/placeholder.svg';
 
   return (
     <motion.div
@@ -67,10 +94,20 @@ const PlaylistItem: React.FC<PlaylistItemProps> = ({
         </div>
         
         <div className="h-12 w-12 relative rounded-md overflow-hidden flex-shrink-0">
+          {!imageLoaded && (
+            <Skeleton className="h-full w-full absolute inset-0" />
+          )}
           <img 
-            src={episode.imagem_miniatura} 
+            src={imageError ? placeholderImage : episode.imagem_miniatura} 
             alt={episode.titulo} 
-            className="h-full w-full object-cover"
+            className={cn(
+              "h-full w-full object-cover",
+              !imageLoaded && "invisible",
+              imageLoaded && "visible"
+            )}
+            loading="lazy"
+            onLoad={handleImageLoad}
+            onError={handleImageError}
           />
           <div className="absolute inset-0 bg-black/30 opacity-0 hover:opacity-100 flex items-center justify-center transition-opacity">
             <motion.button
@@ -85,6 +122,11 @@ const PlaylistItem: React.FC<PlaylistItemProps> = ({
           {isCompleted && (
             <div className="absolute top-0 right-0 bg-green-500 p-1 rounded-bl-md">
               <Check size={12} className="text-white" />
+            </div>
+          )}
+          {isNew() && !isCompleted && (
+            <div className="absolute top-0 left-0 bg-juricast-accent p-1 rounded-br-md">
+              <span className="text-white text-[10px] font-bold">NEW</span>
             </div>
           )}
         </div>
@@ -122,4 +164,4 @@ const PlaylistItem: React.FC<PlaylistItemProps> = ({
   );
 };
 
-export default PlaylistItem;
+export default React.memo(PlaylistItem);

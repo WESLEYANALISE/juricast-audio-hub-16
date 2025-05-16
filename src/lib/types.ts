@@ -1,4 +1,3 @@
-
 export interface PodcastEpisode {
   id: number;
   titulo: string;
@@ -56,4 +55,34 @@ export interface SupabaseEpisode {
   comentarios?: number;
   curtidas?: number;
   data_publicacao?: string;
+}
+
+// Add AudioPlayer related interfaces
+export interface AudioPlayerState {
+  isPlaying: boolean;
+  currentEpisode: PodcastEpisode | null;
+  duration: number;
+  currentTime: number;
+  volume: number;
+  isMuted: boolean;
+  isLoading: boolean;
+  isMinimized: boolean;
+  queue: PodcastEpisode[];
+}
+
+export interface AudioPlayerContextType {
+  state: AudioPlayerState;
+  play: (episode: PodcastEpisode) => void;
+  pause: () => void;
+  resume: () => void;
+  stop: () => void;
+  togglePlay: () => void;
+  seek: (time: number) => void;
+  setVolume: (volume: number) => void;
+  toggleMute: () => void;
+  playNext: () => void;
+  playPrevious: () => void;
+  addToQueue: (episode: PodcastEpisode) => void;
+  clearQueue: () => void;
+  toggleMinimize: () => void;
 }

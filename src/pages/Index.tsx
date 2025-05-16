@@ -6,9 +6,10 @@ import PlaylistItem from '@/components/podcast/PlaylistItem';
 import AreaCard from '@/components/podcast/AreaCard';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { getFeaturedEpisodes, getRecentEpisodes, getInProgressEpisodes, getAllAreas, saveUserIP } from '@/lib/podcast-service';
+import { getInProgressEpisodes, getAllAreas, saveUserIP, getRecentEpisodes } from '@/lib/podcast-service';
 import { PodcastEpisode, AreaCard as AreaCardType } from '@/lib/types';
-import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
+import NewEpisodesCarousel from '@/components/podcast/NewEpisodesCarousel';
 
 const Index = () => {
   const [areas, setAreas] = useState<AreaCardType[]>([]);
@@ -16,7 +17,8 @@ const Index = () => {
   // Fetch all podcast areas
   const { data: inProgressEpisodes = [], isLoading: loadingInProgress } = useQuery({
     queryKey: ['inProgressEpisodes'],
-    queryFn: getInProgressEpisodes
+    queryFn: getInProgressEpisodes,
+    staleTime: 5 * 60 * 1000, // 5 minutes cache
   });
   
   // Save user IP on first load for persistent data
@@ -103,7 +105,7 @@ const Index = () => {
             >
               {loadingInProgress 
                 ? [...Array(2)].map((_, i) => (
-                    <div key={i} className="bg-juricast-card animate-pulse rounded-lg h-16"></div>
+                    <Skeleton key={i} className="h-16 w-full rounded-lg" />
                   ))
                 : inProgressEpisodes.slice(0, 3).map((episode, index) => (
                     <PlaylistItem
@@ -131,7 +133,7 @@ const Index = () => {
           >
             {areas.length === 0 
               ? [...Array(6)].map((_, i) => (
-                  <div key={i} className="bg-juricast-card animate-pulse rounded-lg h-32"></div>
+                  <Skeleton key={i} className="h-32 w-full rounded-lg" />
                 ))
               : areas.map((area, index) => (
                 <motion.div key={area.name} variants={itemVariants}>
@@ -152,75 +154,11 @@ const Index = () => {
   );
 };
 
-const NewEpisodesCarousel = () => {
-  const { data: recentEpisodes = [], isLoading } = useQuery({
-    queryKey: ['recentEpisodes'],
-    queryFn: getRecentEpisodes
-  });
-
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1
-      }
-    }
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, x: 20 },
-    visible: { opacity: 1, x: 0 }
-  };
-
-  return (
-    <motion.div
-      className="overflow-x-auto pb-4"
-      variants={containerVariants}
-    >
-      <div className="flex space-x-4 min-w-max">
-        {isLoading 
-          ? [...Array(4)].map((_, i) => (
-              <div key={i} className="bg-juricast-card animate-pulse rounded-lg h-48 w-64"></div>
-            ))
-          : recentEpisodes.slice(0, 5).map((episode) => (
-              <motion.div
-                key={episode.id}
-                className="flex-shrink-0 w-64"
-                variants={itemVariants}
-              >
-                <Link 
-                  to={`/podcast/${episode.id}`}
-                  className="block bg-juricast-card rounded-lg overflow-hidden transform transition-transform duration-300 hover:scale-105 hover:shadow-lg"
-                >
-                  <div className="relative h-32">
-                    <img 
-                      src={episode.imagem_miniatura} 
-                      alt={episode.titulo}
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
-                    <div className="absolute bottom-2 left-2 right-2">
-                      <span className="inline-block bg-juricast-accent/80 text-white text-xs px-2 py-1 rounded-full">Novo</span>
-                    </div>
-                  </div>
-                  <div className="p-3">
-                    <h3 className="font-medium text-sm line-clamp-2 mb-1">{episode.titulo}</h3>
-                    <p className="text-xs text-juricast-muted">{episode.area}</p>
-                  </div>
-                </Link>
-              </motion.div>
-            ))
-        }
-      </div>
-    </motion.div>
-  );
-};
-
 const RecentEpisodes = () => {
   const { data: recentEpisodes = [], isLoading } = useQuery({
     queryKey: ['recentEpisodes'],
-    queryFn: getRecentEpisodes
+    queryFn: getRecentEpisodes,
+    staleTime: 5 * 60 * 1000, // 5 minutes cache
   });
 
   return (
@@ -244,7 +182,7 @@ const RecentEpisodes = () => {
       >
         {isLoading
           ? [...Array(5)].map((_, i) => (
-              <div key={i} className="bg-juricast-card animate-pulse rounded-lg h-16"></div>
+              <Skeleton key={i} className="h-16 w-full rounded-lg" />
             ))
           : recentEpisodes.slice(0, 5).map((episode, index) => (
               <PlaylistItem

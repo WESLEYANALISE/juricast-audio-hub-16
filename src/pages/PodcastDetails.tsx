@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -12,6 +13,8 @@ import { useAudioPlayer } from '@/context/AudioPlayerContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import RelatedEpisodes from '@/components/podcast/RelatedEpisodes';
 import { PodcastEpisode } from '@/lib/types';
+import { Skeleton } from '@/components/ui/skeleton';
+
 const PodcastDetails = () => {
   const {
     id
@@ -25,6 +28,8 @@ const PodcastDetails = () => {
   } = useAudioPlayer();
   const isMobile = useIsMobile();
   const episodeId = parseInt(id || '0');
+  const [imageLoaded, setImageLoaded] = useState(false);
+  
   const {
     data: episode,
     isLoading,
@@ -32,7 +37,8 @@ const PodcastDetails = () => {
   } = useQuery({
     queryKey: ['episode', episodeId],
     queryFn: () => getEpisodeById(episodeId),
-    enabled: !!episodeId
+    enabled: !!episodeId,
+    staleTime: 5 * 60 * 1000, // 5 minutes cache
   });
 
   // Fetch related episodes based on current episode's area
@@ -42,14 +48,17 @@ const PodcastDetails = () => {
   } = useQuery({
     queryKey: ['relatedEpisodes', episode?.area],
     queryFn: () => getEpisodesByArea(episode?.area || ''),
-    enabled: !!episode?.area
+    enabled: !!episode?.area,
+    staleTime: 10 * 60 * 1000, // 10 minutes cache
   });
+  
   const [isFavorite, setIsFavorite] = useState(false);
 
   // Save user IP on first load for persistent data
   useEffect(() => {
     saveUserIP();
   }, []);
+  
   useEffect(() => {
     if (episode) {
       setIsFavorite(episode.favorito || false);
@@ -62,6 +71,7 @@ const PodcastDetails = () => {
       play(episode);
     }
   }, [episode, play, state.currentEpisode?.id]);
+  
   const handleToggleFavorite = async () => {
     if (!episode) return;
     try {
@@ -75,6 +85,7 @@ const PodcastDetails = () => {
       queryClient.invalidateQueries({
         queryKey: ['episode', episodeId]
       });
+      
       toast({
         title: newStatus ? "Adicionado aos favoritos" : "Removido dos favoritos",
         description: newStatus ? "Este episódio foi adicionado à sua lista de favoritos." : "Este episódio foi removido da sua lista de favoritos."
@@ -87,6 +98,7 @@ const PodcastDetails = () => {
       });
     }
   };
+  
   const handleShareEpisode = () => {
     if (!episode) return;
 
@@ -109,12 +121,18 @@ const PodcastDetails = () => {
       copyToClipboard();
     }
   };
+  
   const copyToClipboard = () => {
     navigator.clipboard.writeText(window.location.href).then(() => toast({
       title: "Link copiado",
       description: "O link do episódio foi copiado para a área de transferência."
     })).catch(err => console.error("Failed to copy:", err));
   };
+  
+  const handleImageLoad = () => {
+    setImageLoaded(true);
+  };
+  
   if (isLoading) {
     return <MainLayout>
       <div className="animate-pulse space-y-8 px-4 md:px-0 max-w-5xl mx-auto">
@@ -126,6 +144,7 @@ const PodcastDetails = () => {
       </div>
     </MainLayout>;
   }
+  
   if (!episode) {
     return <MainLayout>
       <div className="flex flex-col items-center justify-center h-[60vh] px-4 md:px-0 max-w-5xl mx-auto">
@@ -136,6 +155,7 @@ const PodcastDetails = () => {
       </div>
     </MainLayout>;
   }
+  
   const fadeIn = {
     hidden: {
       opacity: 0,
@@ -149,6 +169,7 @@ const PodcastDetails = () => {
       }
     }
   };
+
   return <MainLayout>
       <motion.div initial="hidden" animate="visible" variants={fadeIn} className="px-4 md:px-0 max-w-5xl mx-auto">
         <div className="mb-6 flex items-center justify-between">
@@ -165,7 +186,15 @@ const PodcastDetails = () => {
             <h1 className={cn("font-bold truncate", isMobile ? "text-xl" : "text-2xl")}>{episode.titulo}</h1>
           </div>
           <div className="flex gap-2">
-            
+            <motion.button
+              onClick={handleShareEpisode}
+              className="p-3 md:p-4 bg-juricast-card hover:bg-juricast-accent hover:text-white rounded-full transition-all flex items-center justify-center shadow-md"
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              aria-label="Compartilhar"
+            >
+              <Share2 size={isMobile ? 20 : 24} />
+            </motion.button>
           </div>
         </div>
 
@@ -259,4 +288,5 @@ const PodcastDetails = () => {
       </motion.div>
     </MainLayout>;
 };
+
 export default PodcastDetails;
