@@ -145,6 +145,7 @@ export async function getEpisodeById(id: number): Promise<PodcastEpisode | null>
     const progressData = await getUserProgress(data.id);
     const isFavorite = await checkIfFavorite(data.id);
     
+    // Properly cast and provide defaults for optional properties
     const episode = {
       ...data,
       tag: Array.isArray(data.tag) ? data.tag : data.tag ? [data.tag] : [],
@@ -155,7 +156,7 @@ export async function getEpisodeById(id: number): Promise<PodcastEpisode | null>
       data_publicacao: data.data_publicacao || new Date().toLocaleDateString('pt-BR'),
     };
     
-    return episode;
+    return episode as PodcastEpisode;
   } catch (error) {
     console.error(`Error in getEpisodeById for ${id}:`, error);
     return null;
@@ -281,7 +282,7 @@ export async function getFeaturedEpisodes(): Promise<PodcastEpisode[]> {
   });
 }
 
-// Get recent episodes
+// Get recent episodes - sorting by publication date
 export async function getRecentEpisodes(): Promise<PodcastEpisode[]> {
   return getAllEpisodes().then(episodes => {
     // Parse dates and sort by publication date (newest first)
@@ -620,7 +621,7 @@ async function formatEpisodes(episodes: SupabaseEpisode[]): Promise<PodcastEpiso
       comentarios: episode.comentarios || 0, 
       curtidas: episode.curtidas || 0,
       data_publicacao: episode.data_publicacao || new Date().toLocaleDateString('pt-BR'),
-    });
+    } as PodcastEpisode);
   }
   
   return formattedEpisodes;

@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { toggleFavorite } from '@/lib/podcast-service';
 import { OptimizedImage } from '@/components/ui/optimized-image';
 import { useAudioPlayer } from '@/context/AudioPlayerContext';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface PlaylistItemProps {
   episode: PodcastEpisode;
@@ -23,12 +24,22 @@ const PlaylistItem: React.FC<PlaylistItemProps> = ({
   onPlay 
 }) => {
   const audioPlayer = useAudioPlayer();
+  const queryClient = useQueryClient();
   const isCurrentlyPlaying = isPlaying || (audioPlayer.state.currentEpisode?.id === episode.id && audioPlayer.state.isPlaying);
 
-  const handleToggleFavorite = (e: React.MouseEvent) => {
+  const handleToggleFavorite = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    toggleFavorite(episode.id);
+    
+    try {
+      await toggleFavorite(episode.id);
+      // Refresh the data after toggling favorite
+      queryClient.invalidateQueries({ queryKey: ['favoriteEpisodes'] });
+      queryClient.invalidateQueries({ queryKey: ['episode', episode.id] });
+      queryClient.invalidateQueries({ queryKey: ['allEpisodes'] });
+    } catch (error) {
+      console.error("Error toggling favorite:", error);
+    }
   };
 
   const handlePlay = (e: React.MouseEvent) => {
@@ -156,6 +167,7 @@ const PlaylistItem: React.FC<PlaylistItemProps> = ({
                 className="h-full bg-juricast-accent rounded-full" 
                 style={{ width: `${episode.progresso}%` }}
               />
+              <div className="text-xs text-juricast-muted mt-0.5">{episode.progresso}% concluído</div>
             </div>
           )}
         </div>

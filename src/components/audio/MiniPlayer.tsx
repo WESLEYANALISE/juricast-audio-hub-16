@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { useAudioPlayer } from '@/context/AudioPlayerContext';
-import { Play, Pause, SkipForward, X, Heart } from 'lucide-react';
+import { Play, Pause, SkipForward, X, Heart, SkipNext } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useLocation } from 'react-router-dom';
@@ -9,7 +9,7 @@ import { toggleFavorite } from '@/lib/podcast-service';
 import { useQueryClient } from '@tanstack/react-query';
 
 const MiniPlayer = () => {
-  const { state, play, pause, resume, skipForward, closeMiniPlayer } = useAudioPlayer();
+  const { state, play, pause, resume, skipForward, closeMiniPlayer, playNext } = useAudioPlayer();
   const { currentEpisode, isPlaying, showMiniPlayer, currentTime, duration } = state;
   const location = useLocation();
   const queryClient = useQueryClient();
@@ -22,6 +22,7 @@ const MiniPlayer = () => {
   if (!showMiniPlayer || !currentEpisode || isOnEpisodePage) return null;
   
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
+  const progressPercentage = Math.round(progress);
   
   const formatTime = (time: number) => {
     if (isNaN(time)) return '00:00';
@@ -47,11 +48,17 @@ const MiniPlayer = () => {
     
     try {
       await toggleFavorite(currentEpisode.id);
+      // Invalidate queries to refresh data
       queryClient.invalidateQueries({ queryKey: ['favoriteEpisodes'] });
       queryClient.invalidateQueries({ queryKey: ['episode', currentEpisode.id] });
+      queryClient.invalidateQueries({ queryKey: ['allEpisodes'] });
     } catch (error) {
       console.error("Error toggling favorite:", error);
     }
+  };
+
+  const handleNextEpisode = () => {
+    playNext();
   };
 
   return (
@@ -87,7 +94,10 @@ const MiniPlayer = () => {
               <div className="flex-grow min-w-0">
                 <Link to={`/podcast/${currentEpisode.id}`} className="block">
                   <h4 className="text-sm font-medium truncate">{currentEpisode.titulo}</h4>
-                  <p className="text-xs text-juricast-muted truncate">{formatTime(currentTime)} / {formatTime(duration)}</p>
+                  <div className="flex justify-between">
+                    <p className="text-xs text-juricast-muted">{formatTime(currentTime)} / {formatTime(duration)}</p>
+                    <p className="text-xs text-juricast-accent">{progressPercentage}% concluído</p>
+                  </div>
                 </Link>
               </div>
               
@@ -121,6 +131,15 @@ const MiniPlayer = () => {
                   aria-label="Skip forward 10 seconds"
                 >
                   <SkipForward size={20} />
+                </motion.button>
+                
+                <motion.button
+                  whileTap={{ scale: 0.9 }}
+                  className="p-2 rounded-full hover:bg-juricast-background/30"
+                  onClick={handleNextEpisode}
+                  aria-label="Next episode"
+                >
+                  <SkipNext size={20} />
                 </motion.button>
                 
                 <motion.button

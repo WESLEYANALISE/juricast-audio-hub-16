@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Download } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Download, SkipNext } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAudioPlayer } from '@/context/AudioPlayerContext';
 import { motion } from 'framer-motion';
@@ -29,7 +29,8 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
     seekTo,
     skipForward,
     skipBackward,
-    setPlaybackRate
+    setPlaybackRate,
+    playNext
   } = useAudioPlayer();
   
   const {
@@ -135,6 +136,13 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
     });
   };
   
+  // Calculate progress percentage
+  const progressPercentage = duration > 0 ? Math.round((currentTime / duration) * 100) : 0;
+  
+  const handleSkipEpisode = () => {
+    playNext();
+  };
+  
   return (
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
@@ -196,7 +204,10 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
           </motion.div>
           
           <div className="flex flex-col flex-grow">
-            <h2 className="text-lg md:text-xl font-semibold text-center md:text-left mb-2 line-clamp-2">{title}</h2>
+            <div className="flex justify-between items-center mb-2">
+              <h2 className="text-lg md:text-xl font-semibold text-center md:text-left line-clamp-2">{title}</h2>
+              <span className="text-juricast-accent font-medium">{progressPercentage}% concluído</span>
+            </div>
             
             <div className="flex flex-col gap-4">
               <div 
@@ -244,6 +255,16 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
                     whileTap={{ scale: 0.9 }}
                   >
                     <SkipForward size={18} />
+                  </motion.button>
+                  
+                  <motion.button 
+                    onClick={handleSkipEpisode} 
+                    className="player-button w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-full hover:bg-juricast-background/30 text-juricast-accent"
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    title="Pular para próximo episódio"
+                  >
+                    <SkipNext size={18} />
                   </motion.button>
                 </div>
                 

@@ -85,6 +85,9 @@ const PodcastDetails = () => {
       queryClient.invalidateQueries({
         queryKey: ['episode', episodeId]
       });
+      queryClient.invalidateQueries({
+        queryKey: ['allEpisodes']
+      });
       
       toast({
         title: newStatus ? "Adicionado aos favoritos" : "Removido dos favoritos",
@@ -227,6 +230,21 @@ const PodcastDetails = () => {
                 </motion.button>
               </div>
             </div>
+            
+            {episode.progresso > 0 && (
+              <div className="mb-4 bg-juricast-background/30 p-3 rounded-lg">
+                <div className="flex justify-between text-sm mb-1">
+                  <span>Progresso:</span>
+                  <span className="text-juricast-accent">{episode.progresso}%</span>
+                </div>
+                <div className="w-full h-2 bg-juricast-background rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-juricast-accent rounded-full" 
+                    style={{ width: `${episode.progresso}%` }}
+                  />
+                </div>
+              </div>
+            )}
 
             <motion.div initial={{
             opacity: 0,

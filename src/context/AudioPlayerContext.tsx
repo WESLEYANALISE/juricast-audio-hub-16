@@ -216,18 +216,18 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
           queryClient.invalidateQueries({
             queryKey: ['completedEpisodes']
           });
-        }
-        
-        // Play next in queue if available
-        if (state.queue.length > 0) {
-          const nextEpisode = state.queue[0];
-          dispatch({ type: 'PLAY', payload: nextEpisode });
-          dispatch({ type: 'REMOVE_FROM_QUEUE', payload: nextEpisode.id });
-          toast({
-            title: "Reproduzindo próximo episódio",
-            description: nextEpisode.titulo,
-            duration: 3000,
-          });
+          
+          // Auto-play next in queue if available
+          if (state.queue.length > 0) {
+            const nextEpisode = state.queue[0];
+            dispatch({ type: 'PLAY', payload: nextEpisode });
+            dispatch({ type: 'REMOVE_FROM_QUEUE', payload: nextEpisode.id });
+            toast({
+              title: "Próximo episódio",
+              description: nextEpisode.titulo,
+              variant: "default",
+            });
+          }
         }
       };
       
