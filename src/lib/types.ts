@@ -13,6 +13,7 @@ export interface PodcastEpisode {
   comentarios: number;
   curtidas: number;
   data_publicacao: string;
+  data?: string; // Adding the data field that contains publish dates
 }
 
 export interface UserProgress {
