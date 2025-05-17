@@ -6,7 +6,7 @@ import PlaylistItem from '@/components/podcast/PlaylistItem';
 import { motion } from 'framer-motion';
 import { getRecentEpisodes } from '@/lib/podcast-service';
 import { useAudioPlayer } from '@/context/AudioPlayerContext';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Clock } from 'lucide-react';
 
 const NewEpisodes = () => {
   const audioPlayer = useAudioPlayer();
@@ -16,7 +16,8 @@ const NewEpisodes = () => {
     error
   } = useQuery({
     queryKey: ['recentEpisodes'],
-    queryFn: getRecentEpisodes
+    queryFn: getRecentEpisodes,
+    staleTime: 2 * 60 * 1000 // 2 minutes cache
   });
 
   const containerVariants = {
@@ -47,15 +48,19 @@ const NewEpisodes = () => {
         animate="visible"
         variants={containerVariants}
       >
-        <motion.div variants={itemVariants}>
-          <h1 className="text-3xl font-bold mb-6 bg-gradient-to-r from-juricast-accent to-juricast-text bg-clip-text text-transparent">
+        <motion.div variants={itemVariants} className="flex items-center gap-2">
+          <Clock className="text-juricast-accent" size={24} />
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-juricast-accent to-juricast-text bg-clip-text text-transparent">
             Episódios Recentes
           </h1>
-          
-          <p className="text-juricast-muted mb-6">
-            Confira os últimos lançamentos do JuriCast. Atualizamos nossa biblioteca regularmente com novos conteúdos.
-          </p>
+          <span className="bg-juricast-accent/10 text-juricast-accent text-sm px-2 py-0.5 rounded-full ml-2">
+            {recentEpisodes.length}
+          </span>
         </motion.div>
+          
+        <motion.p className="text-juricast-muted mb-6" variants={itemVariants}>
+          Confira os últimos lançamentos do JuriCast. Atualizamos nossa biblioteca regularmente com novos conteúdos.
+        </motion.p>
 
         {error && (
           <motion.div 
@@ -85,6 +90,7 @@ const NewEpisodes = () => {
                     index={index + 1}
                     isPlaying={audioPlayer.state.currentEpisode?.id === episode.id && audioPlayer.state.isPlaying}
                     onPlay={() => handlePlay(episode)}
+                    priority={index < 5} // Prioritize first 5 episodes
                   />
                 </motion.div>
               ))

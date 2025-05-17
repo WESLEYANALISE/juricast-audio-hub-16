@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
@@ -7,6 +7,7 @@ interface OptimizedImageProps extends React.ImgHTMLAttributes<HTMLImageElement> 
   fallbackSrc?: string;
   aspectRatio?: string;
   skeletonClassName?: string;
+  priority?: boolean;
 }
 
 export const OptimizedImage: React.FC<OptimizedImageProps> = ({
@@ -16,10 +17,19 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
   fallbackSrc = '/placeholder.svg',
   aspectRatio = 'aspect-square',
   skeletonClassName,
+  priority = false,
   ...props
 }) => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
+  
+  // Preload high priority images
+  useEffect(() => {
+    if (priority && src && typeof src === 'string') {
+      const img = new Image();
+      img.src = src;
+    }
+  }, [src, priority]);
   
   const handleLoad = () => {
     setIsLoaded(true);
@@ -44,7 +54,7 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
           "w-full h-full object-cover transition-opacity duration-300",
           isLoaded ? "opacity-100" : "opacity-0"
         )}
-        loading="lazy"
+        loading={priority ? "eager" : "lazy"}
         onLoad={handleLoad}
         onError={handleError}
         {...props}
@@ -52,4 +62,3 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
     </div>
   );
 };
-

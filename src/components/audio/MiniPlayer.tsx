@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useAudioPlayer } from '@/context/AudioPlayerContext';
 import { Play, Pause, SkipForward, X, Heart } from 'lucide-react';
@@ -7,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useLocation } from 'react-router-dom';
 import { toggleFavorite } from '@/lib/podcast-service';
 import { useQueryClient } from '@tanstack/react-query';
+import { OptimizedImage } from '@/components/ui/optimized-image';
 
 const MiniPlayer = () => {
   const { state, play, pause, resume, skipForward, closeMiniPlayer, playNext } = useAudioPlayer();
@@ -52,6 +52,7 @@ const MiniPlayer = () => {
       queryClient.invalidateQueries({ queryKey: ['favoriteEpisodes'] });
       queryClient.invalidateQueries({ queryKey: ['episode', currentEpisode.id] });
       queryClient.invalidateQueries({ queryKey: ['allEpisodes'] });
+      queryClient.invalidateQueries({ queryKey: ['recentEpisodes'] });
     } catch (error) {
       console.error("Error toggling favorite:", error);
     }
@@ -59,6 +60,8 @@ const MiniPlayer = () => {
 
   const handleNextEpisode = () => {
     playNext();
+    // Invalidate progress queries after skipping to refresh UI
+    queryClient.invalidateQueries({ queryKey: ['inProgressEpisodes'] });
   };
 
   return (
@@ -83,15 +86,17 @@ const MiniPlayer = () => {
             
             <div className="flex items-center pt-1 p-3">
               <Link to={`/podcast/${currentEpisode.id}`} className="flex-shrink-0">
-                <motion.img
-                  whileHover={{ scale: 1.05 }}
-                  src={currentEpisode.imagem_miniatura}
-                  alt={currentEpisode.titulo}
-                  className="w-12 h-12 rounded object-cover mr-3 shadow-md"
-                />
+                <motion.div className="w-12 h-12 relative overflow-hidden rounded shadow-md">
+                  <OptimizedImage
+                    src={currentEpisode.imagem_miniatura}
+                    alt={currentEpisode.titulo}
+                    className="w-12 h-12 object-cover"
+                    priority={true}
+                  />
+                </motion.div>
               </Link>
               
-              <div className="flex-grow min-w-0">
+              <div className="flex-grow min-w-0 ml-3">
                 <Link to={`/podcast/${currentEpisode.id}`} className="block">
                   <h4 className="text-sm font-medium truncate">{currentEpisode.titulo}</h4>
                   <div className="flex justify-between">

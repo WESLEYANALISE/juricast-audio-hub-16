@@ -1,4 +1,3 @@
-
 export interface PodcastEpisode {
   id: number;
   titulo: string;
@@ -56,6 +55,7 @@ export interface SupabaseEpisode {
   comentarios?: number;
   curtidas?: number;
   data_publicacao?: string;
+  data?: string; // Adding the data field that contains publish dates
 }
 
 // Add AudioPlayer related interfaces

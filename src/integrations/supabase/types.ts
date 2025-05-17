@@ -2510,6 +2510,7 @@ export type Database = {
       JURIFY: {
         Row: {
           area: string | null
+          data: string | null
           descricao: string | null
           id: number
           imagem_miniatura: string | null
@@ -2521,6 +2522,7 @@ export type Database = {
         }
         Insert: {
           area?: string | null
+          data?: string | null
           descricao?: string | null
           id?: number
           imagem_miniatura?: string | null
@@ -2532,6 +2534,7 @@ export type Database = {
         }
         Update: {
           area?: string | null
+          data?: string | null
           descricao?: string | null
           id?: number
           imagem_miniatura?: string | null

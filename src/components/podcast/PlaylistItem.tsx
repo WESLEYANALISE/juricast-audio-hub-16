@@ -15,13 +15,15 @@ interface PlaylistItemProps {
   index: number;
   isPlaying?: boolean;
   onPlay?: () => void;
+  priority?: boolean;
 }
 
 const PlaylistItem: React.FC<PlaylistItemProps> = ({ 
   episode, 
   index, 
   isPlaying = false,
-  onPlay 
+  onPlay,
+  priority = false
 }) => {
   const audioPlayer = useAudioPlayer();
   const queryClient = useQueryClient();
@@ -32,13 +34,37 @@ const PlaylistItem: React.FC<PlaylistItemProps> = ({
     e.stopPropagation();
     
     try {
+      // Optimistically update UI
+      const wasFavorite = episode.favorito;
+      const episodesCopy = queryClient.getQueryData<PodcastEpisode[]>(['favoriteEpisodes']);
+      
+      // Update UI immediately for better user experience
+      if (episodesCopy) {
+        if (wasFavorite) {
+          // Remove from favorites optimistically
+          queryClient.setQueryData(['favoriteEpisodes'], 
+            episodesCopy.filter(ep => ep.id !== episode.id)
+          );
+        } else {
+          // Add to favorites optimistically
+          queryClient.setQueryData(['favoriteEpisodes'], 
+            [...episodesCopy, {...episode, favorito: true}]
+          );
+        }
+      }
+      
+      // Actual API call
       await toggleFavorite(episode.id);
-      // Refresh the data after toggling favorite
+      
+      // Refresh data across the app
       queryClient.invalidateQueries({ queryKey: ['favoriteEpisodes'] });
       queryClient.invalidateQueries({ queryKey: ['episode', episode.id] });
       queryClient.invalidateQueries({ queryKey: ['allEpisodes'] });
+      queryClient.invalidateQueries({ queryKey: ['recentEpisodes'] });
     } catch (error) {
       console.error("Error toggling favorite:", error);
+      // Revert optimistic update if there was an error
+      queryClient.invalidateQueries({ queryKey: ['favoriteEpisodes'] });
     }
   };
 
@@ -67,17 +93,18 @@ const PlaylistItem: React.FC<PlaylistItemProps> = ({
 
   // Check if episode is new (published in the last 7 days)
   const isNew = () => {
-    if (!episode.data_publicacao) return false;
+    const date = episode.data_publicacao || episode.data;
+    if (!date) return false;
     
     try {
       // First try to parse as ISO date
-      const publishDate = new Date(episode.data_publicacao);
+      const publishDate = new Date(date);
       const currentDate = new Date();
       
       // Check if valid date object was created
       if (isNaN(publishDate.getTime())) {
         // Try to parse BR format (dd/mm/yyyy)
-        const parts = episode.data_publicacao.split('/');
+        const parts = date.split('/');
         if (parts.length === 3) {
           const day = parseInt(parts[0], 10);
           const month = parseInt(parts[1], 10) - 1;
@@ -130,6 +157,7 @@ const PlaylistItem: React.FC<PlaylistItemProps> = ({
             alt={episode.titulo}
             className="h-full w-full"
             aspectRatio="aspect-square"
+            priority={priority}
           />
           <div className="absolute inset-0 bg-black/30 opacity-0 hover:opacity-100 flex items-center justify-center transition-opacity">
             <motion.button

@@ -52,7 +52,7 @@ function ensureTagsAreArrays(episodes: any[]): SupabaseEpisode[] {
     tag: Array.isArray(episode.tag) ? episode.tag : episode.tag ? [episode.tag] : [],
     comentarios: episode.comentarios || 0,
     curtidas: episode.curtidas || 0,
-    data_publicacao: episode.data_publicacao || new Date().toISOString().split('T')[0]
+    data_publicacao: episode.data_publicacao || episode.data || new Date().toISOString().split('T')[0]
   }));
 }
 
@@ -289,7 +289,7 @@ export async function getRecentEpisodes(): Promise<PodcastEpisode[]> {
     return episodes
       .map(episode => ({
         ...episode,
-        parsedDate: parsePublicationDate(episode.data_publicacao)
+        parsedDate: parsePublicationDate(episode.data_publicacao || episode.data)
       }))
       .sort((a, b) => {
         // First try sorting by the parsed date
@@ -300,7 +300,7 @@ export async function getRecentEpisodes(): Promise<PodcastEpisode[]> {
         // Fall back to sequence if dates can't be parsed
         return (b.sequencia || '').localeCompare(a.sequencia || '');
       })
-      .slice(0, 8); // Increase to show more recent episodes
+      .slice(0, 8); // Show 8 recent episodes
   });
 }
 
@@ -620,7 +620,7 @@ async function formatEpisodes(episodes: SupabaseEpisode[]): Promise<PodcastEpiso
       favorito: isFavorite,
       comentarios: episode.comentarios || 0, 
       curtidas: episode.curtidas || 0,
-      data_publicacao: episode.data_publicacao || new Date().toISOString().split('T')[0],
+      data_publicacao: episode.data_publicacao || episode.data || new Date().toISOString().split('T')[0],
     } as PodcastEpisode);
   }
   

@@ -137,6 +137,7 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const queryClient = useQueryClient();
   const progressTrackingInterval = useRef<number | null>(null);
+  const progressSaveTimeout = useRef<number | null>(null);
 
   // Initialize audio element only once in the app lifecycle
   useEffect(() => {
@@ -202,20 +203,40 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
       const handleTimeUpdate = () => {
         if (audioRef.current) {
           dispatch({ type: 'SET_CURRENT_TIME', payload: audioRef.current.currentTime });
+          
+          // Save progress with debounce to avoid too many database calls
+          if (progressSaveTimeout.current) {
+            window.clearTimeout(progressSaveTimeout.current);
+          }
+          
+          progressSaveTimeout.current = window.setTimeout(() => {
+            if (state.currentEpisode && audioRef.current) {
+              const currentTime = audioRef.current.currentTime;
+              const duration = audioRef.current.duration || 0;
+              const progressPercent = duration > 0 ? Math.floor(currentTime / duration * 100) : 0;
+              
+              // Don't save progress for very short listens (less than 3%)
+              if (progressPercent > 3 && state.currentEpisode.id) {
+                saveEpisodeProgress(state.currentEpisode.id, progressPercent, currentTime);
+                
+                // Refresh in-progress episodes data when significant progress is made
+                if (progressPercent % 10 === 0) { // Every 10% refresh the data
+                  queryClient.invalidateQueries({ queryKey: ['inProgressEpisodes'] });
+                }
+              }
+            }
+          }, 2000); // Save after 2 seconds of stable playback
         }
       };
       
       const handleEnded = () => {
-        dispatch({ type: 'PAUSE' });
-        // Save progress as completed
+        // Mark episode as completed (100%)
         if (state.currentEpisode) {
           saveEpisodeProgress(state.currentEpisode.id, 100, audioRef.current?.duration || 0);
-          queryClient.invalidateQueries({
-            queryKey: ['inProgressEpisodes']
-          });
-          queryClient.invalidateQueries({
-            queryKey: ['completedEpisodes']
-          });
+          
+          // Invalidate queries to refresh UI immediately after completion
+          queryClient.invalidateQueries({ queryKey: ['inProgressEpisodes'] });
+          queryClient.invalidateQueries({ queryKey: ['completedEpisodes'] });
           
           // Auto-play next in queue if available
           if (state.queue.length > 0) {
@@ -227,6 +248,8 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
               description: nextEpisode.titulo,
               variant: "default",
             });
+          } else {
+            dispatch({ type: 'PAUSE' });
           }
         }
       };
@@ -235,13 +258,15 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
       audioRef.current.addEventListener('timeupdate', handleTimeUpdate);
       audioRef.current.addEventListener('ended', handleEnded);
       
-      // Don't auto-play when just setting source, let components control that
-      
       return () => {
         if (audioRef.current) {
           audioRef.current.removeEventListener('loadedmetadata', handleLoadedMetadata);
           audioRef.current.removeEventListener('timeupdate', handleTimeUpdate);
           audioRef.current.removeEventListener('ended', handleEnded);
+        }
+        
+        if (progressSaveTimeout.current) {
+          window.clearTimeout(progressSaveTimeout.current);
         }
       };
     }
@@ -286,12 +311,14 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
         window.clearInterval(progressTrackingInterval.current);
       }
 
-      // Set new interval
+      // Set new interval - more frequent to ensure more accurate progress tracking
       progressTrackingInterval.current = window.setInterval(() => {
         if (audioRef.current && state.currentEpisode) {
           const currentTime = audioRef.current.currentTime;
           const duration = audioRef.current.duration || 0;
           const progressPercent = duration > 0 ? Math.floor(currentTime / duration * 100) : 0;
+          
+          // Save progress every 5 seconds during active playback
           saveEpisodeProgress(state.currentEpisode.id, progressPercent, currentTime);
         }
       }, 5000); // Save every 5 seconds
@@ -300,13 +327,26 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
       window.clearInterval(progressTrackingInterval.current);
     }
 
+    // Save progress on pause to ensure progress is captured
+    if (!state.isPlaying && state.currentEpisode && audioRef.current && audioRef.current.currentTime > 0) {
+      const currentTime = audioRef.current.currentTime;
+      const duration = audioRef.current.duration || 0;
+      const progressPercent = duration > 0 ? Math.floor(currentTime / duration * 100) : 0;
+      
+      // Only save if meaningful progress was made
+      if (progressPercent > 3 && state.currentEpisode.id) {
+        saveEpisodeProgress(state.currentEpisode.id, progressPercent, currentTime);
+        queryClient.invalidateQueries({ queryKey: ['inProgressEpisodes'] });
+      }
+    }
+
     // Cleanup on unmount
     return () => {
       if (progressTrackingInterval.current) {
         window.clearInterval(progressTrackingInterval.current);
       }
     };
-  }, [state.isPlaying, state.currentEpisode]);
+  }, [state.isPlaying, state.currentEpisode, queryClient]);
 
   // Context methods
   const play = (episode: PodcastEpisode) => {
@@ -319,6 +359,9 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
         variant: "default"
       });
     }
+    
+    // Invalidate queries to ensure UI is up-to-date
+    queryClient.invalidateQueries({ queryKey: ['inProgressEpisodes'] });
   };
 
   const pause = () => {
@@ -403,11 +446,22 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
     dispatch({ type: 'STOP' });
   };
 
+  // Make sure playNext invalidates queries to update the UI
   const playNext = () => {
     if (state.queue.length > 0) {
       const nextEpisode = state.queue[0];
       play(nextEpisode);
       removeFromQueue(nextEpisode.id);
+      
+      // Save current episode as completed if it exists
+      if (state.currentEpisode) {
+        saveEpisodeProgress(state.currentEpisode.id, 100, audioRef.current?.duration || 0);
+      }
+      
+      // Refresh data to show updated progress in UI
+      queryClient.invalidateQueries({ queryKey: ['inProgressEpisodes'] });
+      queryClient.invalidateQueries({ queryKey: ['completedEpisodes'] });
+      
       toast({
         title: "Reproduzindo próximo episódio",
         description: nextEpisode.titulo,

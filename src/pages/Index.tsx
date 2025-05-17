@@ -6,15 +6,23 @@ import PlaylistItem from '@/components/podcast/PlaylistItem';
 import AreaCard from '@/components/podcast/AreaCard';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { getInProgressEpisodes, getAllAreas, saveUserIP, getRecentEpisodes } from '@/lib/podcast-service';
+import { getInProgressEpisodes, getAllAreas, saveUserIP, getRecentEpisodes, getAllEpisodes } from '@/lib/podcast-service';
 import { PodcastEpisode, AreaCard as AreaCardType } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import NewEpisodesCarousel from '@/components/podcast/NewEpisodesCarousel';
+import { Headphones } from 'lucide-react';
 
 const Index = () => {
   const [areas, setAreas] = useState<AreaCardType[]>([]);
   
-  // Fetch all podcast areas
+  // Get total episode count
+  const { data: allEpisodes = [], isLoading: loadingAllEpisodes } = useQuery({
+    queryKey: ['allEpisodes'],
+    queryFn: getAllEpisodes,
+    staleTime: 5 * 60 * 1000, // 5 minutes cache
+  });
+  
+  // Fetch in-progress episodes
   const { data: inProgressEpisodes = [], isLoading: loadingInProgress } = useQuery({
     queryKey: ['inProgressEpisodes'],
     queryFn: getInProgressEpisodes,
@@ -64,6 +72,25 @@ const Index = () => {
         animate="visible"
         variants={containerVariants}
       >
+        {/* Total Episodes Counter */}
+        <motion.div 
+          variants={itemVariants}
+          className="bg-gradient-to-r from-juricast-accent/20 to-juricast-background rounded-lg p-4 flex items-center justify-between mb-6"
+        >
+          <div>
+            <h2 className="text-lg font-bold">Biblioteca de Episódios</h2>
+            <p className="text-sm text-juricast-muted">
+              Conteúdo jurídico exclusivo para você
+            </p>
+          </div>
+          <div className="flex items-center bg-juricast-accent/10 rounded-full px-4 py-2">
+            <Headphones className="text-juricast-accent mr-2" size={20} />
+            <span className="font-bold text-juricast-accent">
+              {loadingAllEpisodes ? "..." : allEpisodes.length} episódios
+            </span>
+          </div>
+        </motion.div>
+
         <motion.section variants={itemVariants}>
           <motion.div 
             className="flex justify-between items-center mb-4"
@@ -112,6 +139,7 @@ const Index = () => {
                       key={episode.id}
                       episode={episode}
                       index={index + 1}
+                      priority={true}
                     />
                   ))
               }
@@ -189,6 +217,7 @@ const RecentEpisodes = () => {
                 key={episode.id}
                 episode={episode}
                 index={index + 1}
+                priority={index < 2} // Only set priority for first two items
               />
             ))
         }

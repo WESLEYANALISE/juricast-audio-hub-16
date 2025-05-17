@@ -5,11 +5,13 @@ import MainLayout from '@/components/layout/MainLayout';
 import PlaylistItem from '@/components/podcast/PlaylistItem';
 import { motion } from 'framer-motion';
 import { getInProgressEpisodes } from '@/lib/podcast-service';
+import { Clock } from 'lucide-react';
 
 const InProgress = () => {
   const { data: inProgressEpisodes = [], isLoading } = useQuery({
     queryKey: ['inProgressEpisodes'],
-    queryFn: getInProgressEpisodes
+    queryFn: getInProgressEpisodes,
+    staleTime: 60 * 1000 // 1 minute cache
   });
 
   const containerVariants = {
@@ -33,10 +35,15 @@ const InProgress = () => {
         transition={{ duration: 0.5 }}
         className="space-y-6"
       >
-        <div>
-          <h1 className="text-2xl font-bold mb-2">Em Progresso</h1>
-          <p className="text-juricast-muted">Continue de onde parou</p>
-        </div>
+        <motion.div className="flex items-center gap-2">
+          <Clock className="text-juricast-accent" size={24} />
+          <h1 className="text-2xl font-bold">Em Progresso</h1>
+          <span className="bg-juricast-accent/10 text-juricast-accent text-sm px-2 py-0.5 rounded-full ml-2">
+            {inProgressEpisodes.length}
+          </span>
+        </motion.div>
+        
+        <p className="text-juricast-muted">Continue de onde parou</p>
 
         {isLoading ? (
           <div className="space-y-3">
@@ -56,6 +63,7 @@ const InProgress = () => {
                 <PlaylistItem
                   episode={episode}
                   index={index + 1}
+                  priority={index < 3} // Prioritize first 3 images
                 />
               </motion.div>
             ))}
@@ -67,6 +75,7 @@ const InProgress = () => {
             initial="hidden"
             animate="visible"
           >
+            <Clock size={40} className="text-juricast-muted mb-4" />
             <h2 className="text-xl font-semibold mb-2">Nenhum episódio em progresso</h2>
             <p className="text-juricast-muted text-center mb-4">
               Você ainda não começou a ouvir nenhum episódio. 
