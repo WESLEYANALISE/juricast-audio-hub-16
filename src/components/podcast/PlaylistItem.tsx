@@ -180,6 +180,20 @@ const PlaylistItem: React.FC<PlaylistItemProps> = ({
               <span className="text-white text-[10px] font-bold">NEW</span>
             </div>
           )}
+          {/* Progress indicator - Shown as a small circle on the bottom right of the thumbnail */}
+          {episode.progresso > 0 && episode.progresso < 100 && (
+            <div className="absolute bottom-0 right-0 w-4 h-4 bg-juricast-background rounded-tl-md flex items-center justify-center" title={`${episode.progresso}% concluído`}>
+              <div className="w-3 h-3 rounded-full border border-juricast-accent flex items-center justify-center">
+                <div 
+                  className="bg-juricast-accent rounded-full" 
+                  style={{ 
+                    width: `${Math.max(1, Math.min(11, episode.progresso / 10))}px`, 
+                    height: `${Math.max(1, Math.min(11, episode.progresso / 10))}px` 
+                  }}
+                />
+              </div>
+            </div>
+          )}
         </div>
         
         <div className="flex-1 ml-4 mr-2 overflow-hidden">
@@ -188,16 +202,6 @@ const PlaylistItem: React.FC<PlaylistItemProps> = ({
             {getAreaIcon()}
             <span className="truncate">{episode.area} - {episode.tema}</span>
           </div>
-          
-          {episode.progresso && episode.progresso > 0 && episode.progresso < 100 && (
-            <div className="mt-1 w-full h-1 bg-juricast-background rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-juricast-accent rounded-full" 
-                style={{ width: `${episode.progresso}%` }}
-              />
-              <div className="text-xs text-juricast-muted mt-0.5">{episode.progresso}% concluído</div>
-            </div>
-          )}
         </div>
         
         <motion.button

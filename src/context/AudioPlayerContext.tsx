@@ -1,8 +1,9 @@
 import React, { createContext, useContext, useReducer, useEffect, useRef } from 'react';
 import { AudioPlayerContextType, AudioPlayerState, PodcastEpisode, AudioPlayerProviderProps } from '@/lib/types';
-import { saveEpisodeProgress, getEpisodesByArea } from '@/lib/podcast-service';
+import { saveEpisodeProgress, getEpisodesByArea, getAllEpisodes } from '@/lib/podcast-service';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/hooks/use-toast';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // Initial state for audio player
 const initialState: AudioPlayerState = {
@@ -138,6 +139,7 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
   const queryClient = useQueryClient();
   const progressTrackingInterval = useRef<number | null>(null);
   const progressSaveTimeout = useRef<number | null>(null);
+  const themeEpisodes = useRef<PodcastEpisode[]>([]);
 
   // Initialize audio element only once in the app lifecycle
   useEffect(() => {
@@ -161,18 +163,46 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
   // Fetch related episodes to queue when current episode changes
   useEffect(() => {
     const fetchAndQueueRelatedEpisodes = async () => {
-      if (state.currentEpisode && state.queue.length === 0) {
+      if (state.currentEpisode) {
         try {
-          const relatedEpisodes = await getEpisodesByArea(state.currentEpisode.area);
+          // Get all episodes in the same area and theme
+          const areaEpisodes = await getEpisodesByArea(state.currentEpisode.area);
           
-          // Filter out current episode and create a queue of up to 5 related episodes
-          if (relatedEpisodes && relatedEpisodes.length > 0) {
-            const filteredEpisodes = relatedEpisodes
-              .filter(ep => ep.id !== state.currentEpisode?.id)
-              .slice(0, 5);
-              
-            if (filteredEpisodes.length > 0) {
-              dispatch({ type: 'SET_QUEUE', payload: filteredEpisodes });
+          if (areaEpisodes && areaEpisodes.length > 0) {
+            // Filter episodes with the same theme and sort by sequence
+            const sameThemeEpisodes = areaEpisodes
+              .filter(ep => ep.tema === state.currentEpisode?.tema)
+              .sort((a, b) => {
+                // Parse sequence as numbers if possible, otherwise compare as strings
+                const seqA = parseInt(a.sequencia) || a.sequencia;
+                const seqB = parseInt(b.sequencia) || b.sequencia;
+                
+                if (typeof seqA === 'number' && typeof seqB === 'number') {
+                  return seqA - seqB;
+                }
+                return String(a.sequencia).localeCompare(String(b.sequencia));
+              });
+            
+            // Store theme episodes for later use
+            themeEpisodes.current = sameThemeEpisodes;
+            
+            // Find current episode index in the sequence
+            const currentIndex = sameThemeEpisodes.findIndex(ep => ep.id === state.currentEpisode?.id);
+            
+            // If we found the episode and there are more episodes after it, queue them
+            if (currentIndex !== -1 && currentIndex < sameThemeEpisodes.length - 1) {
+              const nextEpisodes = sameThemeEpisodes.slice(currentIndex + 1, currentIndex + 6);
+              dispatch({ type: 'SET_QUEUE', payload: nextEpisodes });
+            } else if (state.queue.length === 0) {
+              // If we're at the end of theme episodes and the queue is empty, 
+              // add some episodes from the same area but different themes
+              const differentThemeEpisodes = areaEpisodes
+                .filter(ep => ep.tema !== state.currentEpisode?.tema)
+                .slice(0, 5);
+                
+              if (differentThemeEpisodes.length > 0) {
+                dispatch({ type: 'SET_QUEUE', payload: differentThemeEpisodes });
+              }
             }
           }
         } catch (error) {
@@ -238,7 +268,48 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
           queryClient.invalidateQueries({ queryKey: ['inProgressEpisodes'] });
           queryClient.invalidateQueries({ queryKey: ['completedEpisodes'] });
           
-          // Auto-play next in queue if available
+          // Find the next episode in the sequence
+          const currentThemeEpisodes = themeEpisodes.current;
+          if (currentThemeEpisodes.length > 0) {
+            const currentIndex = currentThemeEpisodes.findIndex(ep => ep.id === state.currentEpisode?.id);
+            if (currentIndex !== -1 && currentIndex < currentThemeEpisodes.length - 1) {
+              const nextEpisode = currentThemeEpisodes[currentIndex + 1];
+              
+              // Show animation toast for next episode
+              toast({
+                title: "Próximo episódio",
+                description: (
+                  <div className="flex items-center gap-2">
+                    <div className="w-10 h-10 relative overflow-hidden rounded">
+                      <img 
+                        src={nextEpisode.imagem_miniatura} 
+                        alt={nextEpisode.titulo} 
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="flex-1 overflow-hidden">
+                      <p className="font-semibold truncate">{nextEpisode.titulo}</p>
+                      <p className="text-xs text-muted-foreground">{nextEpisode.area} - {nextEpisode.tema}</p>
+                    </div>
+                  </div>
+                ),
+                variant: "default",
+                duration: 5000
+              });
+              
+              // Play next episode
+              dispatch({ type: 'PLAY', payload: nextEpisode });
+              
+              // If next episode is in queue, remove it
+              if (state.queue.some(ep => ep.id === nextEpisode.id)) {
+                dispatch({ type: 'REMOVE_FROM_QUEUE', payload: nextEpisode.id });
+              }
+              
+              return;
+            }
+          }
+          
+          // If no next episode in sequence found, auto-play next in queue if available
           if (state.queue.length > 0) {
             const nextEpisode = state.queue[0];
             dispatch({ type: 'PLAY', payload: nextEpisode });
@@ -448,6 +519,32 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
 
   // Make sure playNext invalidates queries to update the UI
   const playNext = () => {
+    // Check if there's a next episode in the same theme sequence
+    const currentThemeEpisodes = themeEpisodes.current;
+    if (state.currentEpisode && currentThemeEpisodes.length > 0) {
+      const currentIndex = currentThemeEpisodes.findIndex(ep => ep.id === state.currentEpisode.id);
+      if (currentIndex !== -1 && currentIndex < currentThemeEpisodes.length - 1) {
+        const nextEpisode = currentThemeEpisodes[currentIndex + 1];
+        play(nextEpisode);
+        
+        // Save current episode as completed
+        if (state.currentEpisode) {
+          saveEpisodeProgress(state.currentEpisode.id, 100, audioRef.current?.duration || 0);
+        }
+        
+        // Refresh data
+        queryClient.invalidateQueries({ queryKey: ['inProgressEpisodes'] });
+        queryClient.invalidateQueries({ queryKey: ['completedEpisodes'] });
+        
+        toast({
+          title: "Reproduzindo próximo episódio",
+          description: nextEpisode.titulo,
+        });
+        return;
+      }
+    }
+    
+    // Fall back to queue if no next episode in sequence
     if (state.queue.length > 0) {
       const nextEpisode = state.queue[0];
       play(nextEpisode);
@@ -470,8 +567,20 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
   };
 
   const playPrevious = () => {
-    // Implementation for playing previous track if needed
-    console.log('Play previous not implemented yet');
+    // Check if there's a previous episode in the same theme sequence
+    const currentThemeEpisodes = themeEpisodes.current;
+    if (state.currentEpisode && currentThemeEpisodes.length > 0) {
+      const currentIndex = currentThemeEpisodes.findIndex(ep => ep.id === state.currentEpisode.id);
+      if (currentIndex > 0) {
+        const previousEpisode = currentThemeEpisodes[currentIndex - 1];
+        play(previousEpisode);
+        
+        toast({
+          title: "Reproduzindo episódio anterior",
+          description: previousEpisode.titulo,
+        });
+      }
+    }
   };
 
   const value: AudioPlayerContextType = {

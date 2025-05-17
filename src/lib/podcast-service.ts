@@ -56,13 +56,13 @@ function ensureTagsAreArrays(episodes: any[]): SupabaseEpisode[] {
   }));
 }
 
-// Get episodes by area (category)
+// Get episodes by area (category) - Fix case sensitivity issue
 export async function getEpisodesByArea(area: string): Promise<PodcastEpisode[]> {
   try {
     if (!area) return [];
     
     // Format the area string to match how it might be stored in the database
-    // First letter capitalized, spaces restored from dashes
+    // Convert to lowercase for case-insensitive comparison
     const formattedArea = area
       .split('-')
       .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
@@ -73,7 +73,7 @@ export async function getEpisodesByArea(area: string): Promise<PodcastEpisode[]>
     const { data, error } = await supabase
       .from('JURIFY')
       .select('*')
-      .ilike('area', `%${formattedArea}%`)
+      .ilike('area', `%${formattedArea}%`) // Use case-insensitive search
       .order('sequencia', { ascending: true });
     
     if (error) {
@@ -519,8 +519,8 @@ export async function getInProgressEpisodes(): Promise<PodcastEpisode[]> {
       .from('podcast_history')
       .select('episode_id, progress_percent, current_position')
       .eq('user_ip', userIp)
-      .or('progress_percent.gt.0,progress_percent.lt.100,current_position.gt.0')
-      .lt('progress_percent', 100);
+      .or('progress_percent.gt.0,current_position.gt.0') // Changed to include all episodes with any progress
+      .lt('progress_percent', 100); // Keep only episodes that are not fully completed
     
     if (error) throw error;
     

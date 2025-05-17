@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -89,7 +88,8 @@ const Sidebar = () => {
   
   const { data: categories = [] } = useQuery({
     queryKey: ['categories'],
-    queryFn: fetchCategories
+    queryFn: fetchCategories,
+    staleTime: 5 * 60 * 1000 // 5 minutes cache
   });
   
   return (
@@ -157,8 +157,6 @@ const Sidebar = () => {
           )}
         </div>
       </nav>
-
-      {/* Premium banner has been removed */}
     </motion.div>
   );
 };
