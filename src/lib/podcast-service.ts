@@ -511,19 +511,24 @@ export async function getUserProgress(episodeId: number): Promise<UserProgress |
   }
 }
 
+// Fixed getInProgressEpisodes to include episodes with current_position > 0 regardless of progress_percent
 export async function getInProgressEpisodes(): Promise<PodcastEpisode[]> {
   try {
     const userIp = getUserIP();
     const { data, error } = await supabase
       .from('podcast_history')
-      .select('episode_id, progress_percent')
+      .select('episode_id, progress_percent, current_position')
       .eq('user_ip', userIp)
-      .gt('progress_percent', 0)
+      .or('progress_percent.gt.0,progress_percent.lt.100,current_position.gt.0')
       .lt('progress_percent', 100);
     
     if (error) throw error;
     
     const episodeIds = data.map(item => item.episode_id);
+    
+    if (episodeIds.length === 0) {
+      return [];
+    }
     
     return getAllEpisodes().then(episodes => 
       episodes.filter(episode => episodeIds.includes(episode.id))
@@ -535,7 +540,8 @@ export async function getInProgressEpisodes(): Promise<PodcastEpisode[]> {
     try {
       const progressData = getProgressData();
       const episodeIds = Object.keys(progressData).map(Number).filter(id => 
-        progressData[id].progress > 0 && progressData[id].progress < 100
+        progressData[id].progress > 0 && progressData[id].progress < 100 || 
+        progressData[id].lastPosition > 0
       );
       
       return getAllEpisodes().then(episodes => 
@@ -603,26 +609,66 @@ function getFavoritesData(): Record<number, UserFavorite> {
   }
 }
 
-// Format episodes with additional client-side data
+// Optimized formatEpisodes function to use batch operations instead of individual queries
 async function formatEpisodes(episodes: SupabaseEpisode[]): Promise<PodcastEpisode[]> {
-  // Create an array to hold the processed episodes
-  const formattedEpisodes: PodcastEpisode[] = [];
+  if (!episodes || episodes.length === 0) {
+    return [];
+  }
 
-  // Process each episode sequentially
-  for (const episode of episodes) {
-    const progressData = await getUserProgress(episode.id);
-    const isFavorite = await checkIfFavorite(episode.id);
+  try {
+    // Get all episode IDs
+    const episodeIds = episodes.map(ep => ep.id);
+    const userIp = getUserIP();
+
+    // Batch fetch progress data
+    const { data: progressData, error: progressError } = await supabase
+      .from('podcast_history')
+      .select('episode_id, progress_percent, current_position')
+      .eq('user_ip', userIp)
+      .in('episode_id', episodeIds);
+
+    if (progressError) console.error("Error fetching progress data:", progressError);
+
+    // Batch fetch favorites data
+    const { data: favoritesData, error: favoritesError } = await supabase
+      .from('podcast_favorites')
+      .select('episode_id')
+      .eq('user_ip', userIp)
+      .in('episode_id', episodeIds);
+
+    if (favoritesError) console.error("Error fetching favorites data:", favoritesError);
+
+    // Create maps for quick lookups
+    const progressMap = new Map(
+      (progressData || []).map(item => [item.episode_id, item.progress_percent || (item.current_position > 0 ? 1 : 0)])
+    );
     
-    formattedEpisodes.push({
+    const favoritesMap = new Map(
+      (favoritesData || []).map(item => [item.episode_id, true])
+    );
+
+    // Format episodes with the batched data
+    return episodes.map(episode => ({
       ...episode,
       tag: Array.isArray(episode.tag) ? episode.tag : episode.tag ? [episode.tag] : [],
-      progresso: progressData ? progressData.progress : 0,
-      favorito: isFavorite,
-      comentarios: episode.comentarios || 0, 
+      progresso: progressMap.get(episode.id) || 0,
+      favorito: favoritesMap.has(episode.id),
+      comentarios: episode.comentarios || 0,
       curtidas: episode.curtidas || 0,
       data_publicacao: episode.data_publicacao || episode.data || new Date().toISOString().split('T')[0],
-    } as PodcastEpisode);
+    } as PodcastEpisode));
+  } catch (error) {
+    console.error("Error in formatEpisodes batch operations:", error);
+    
+    // Fallback to simple formatting without user data
+    return episodes.map(episode => ({
+      ...episode,
+      tag: Array.isArray(episode.tag) ? episode.tag : episode.tag ? [episode.tag] : [],
+      progresso: 0,
+      favorito: false,
+      comentarios: episode.comentarios || 0,
+      curtidas: episode.curtidas || 0,
+      data_publicacao: episode.data_publicacao || episode.data || new Date().toISOString().split('T')[0],
+    } as PodcastEpisode));
   }
-  
-  return formattedEpisodes;
 }

@@ -11,7 +11,9 @@ const InProgress = () => {
   const { data: inProgressEpisodes = [], isLoading } = useQuery({
     queryKey: ['inProgressEpisodes'],
     queryFn: getInProgressEpisodes,
-    staleTime: 60 * 1000 // 1 minute cache
+    staleTime: 60 * 1000, // 1 minute cache
+    refetchOnMount: true, // Always refetch on component mount to ensure data is fresh
+    refetchOnWindowFocus: true // Refetch when window regains focus
   });
 
   const containerVariants = {

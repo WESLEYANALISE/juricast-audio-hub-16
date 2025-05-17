@@ -13,6 +13,7 @@ const NewEpisodesCarousel: React.FC = () => {
     queryKey: ['recentEpisodes'],
     queryFn: getRecentEpisodes,
     staleTime: 5 * 60 * 1000, // 5 minutes cache
+    refetchOnMount: true,
   });
 
   const containerVariants = {

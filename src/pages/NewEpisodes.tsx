@@ -17,7 +17,8 @@ const NewEpisodes = () => {
   } = useQuery({
     queryKey: ['recentEpisodes'],
     queryFn: getRecentEpisodes,
-    staleTime: 2 * 60 * 1000 // 2 minutes cache
+    staleTime: 2 * 60 * 1000, // 2 minutes cache
+    refetchOnMount: true,
   });
 
   const containerVariants = {

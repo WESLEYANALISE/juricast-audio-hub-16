@@ -9,8 +9,9 @@ import { motion } from 'framer-motion';
 
 const fetchCategories = async () => {
   try {
+    // Now fetch from the JURIFY table instead of podcast_tabela
     const { data, error } = await supabase
-      .from('podcast_tabela')
+      .from('JURIFY')
       .select('area')
       .order('area', { ascending: true });
 
@@ -20,8 +21,8 @@ const fetchCategories = async () => {
     }
 
     // Extract unique areas
-    const areas = [...new Set(data?.map(item => item.area))];
-    return areas;
+    const areas = [...new Set(data?.map(item => item.area).filter(Boolean))];
+    return areas.sort();
   } catch (error) {
     console.error("Error in fetchCategories:", error);
     return [];
@@ -157,11 +158,7 @@ const Sidebar = () => {
         </div>
       </nav>
 
-      <div className="p-4 border-t border-juricast-card/30">
-        <div className="bg-gradient-to-r from-juricast-card to-juricast-card/80 p-3 rounded-lg">
-          <p className="text-xs text-juricast-text/80">Assine o Premium e acesse conteúdo exclusivo</p>
-        </div>
-      </div>
+      {/* Premium banner has been removed */}
     </motion.div>
   );
 };
