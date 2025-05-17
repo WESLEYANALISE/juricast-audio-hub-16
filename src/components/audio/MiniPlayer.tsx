@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { useAudioPlayer } from '@/context/AudioPlayerContext';
-import { Play, Pause, SkipForward, X, Heart, SkipNext } from 'lucide-react';
+import { Play, Pause, SkipForward, X, Heart } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useLocation } from 'react-router-dom';
@@ -139,7 +139,7 @@ const MiniPlayer = () => {
                   onClick={handleNextEpisode}
                   aria-label="Next episode"
                 >
-                  <SkipNext size={20} />
+                  <SkipForward className="rotate-90" size={20} />
                 </motion.button>
                 
                 <motion.button

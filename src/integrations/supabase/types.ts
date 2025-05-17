@@ -2909,6 +2909,30 @@ export type Database = {
         }
         Relationships: []
       }
+      modelos_peticoes: {
+        Row: {
+          area: string | null
+          created_at: string
+          id: number
+          link: string | null
+          total: string | null
+        }
+        Insert: {
+          area?: string | null
+          created_at?: string
+          id?: number
+          link?: string | null
+          total?: string | null
+        }
+        Update: {
+          area?: string | null
+          created_at?: string
+          id?: number
+          link?: string | null
+          total?: string | null
+        }
+        Relationships: []
+      }
       noticias: {
         Row: {
           area_direito: string | null

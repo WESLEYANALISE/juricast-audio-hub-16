@@ -1,6 +1,5 @@
-
 import React, { useState, useRef, useEffect } from 'react';
-import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Download, SkipNext } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAudioPlayer } from '@/context/AudioPlayerContext';
 import { motion } from 'framer-motion';
@@ -264,7 +263,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
                     whileTap={{ scale: 0.9 }}
                     title="Pular para próximo episódio"
                   >
-                    <SkipNext size={18} />
+                    <SkipForward className="rotate-90" size={18} />
                   </motion.button>
                 </div>
                 
