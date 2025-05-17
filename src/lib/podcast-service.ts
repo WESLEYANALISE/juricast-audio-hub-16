@@ -61,19 +61,15 @@ export async function getEpisodesByArea(area: string): Promise<PodcastEpisode[]>
   try {
     if (!area) return [];
     
-    // Format the area string to match how it might be stored in the database
-    // Convert to lowercase for case-insensitive comparison
-    const formattedArea = area
-      .split('-')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-      .join(' ');
+    // Remove the case sensitivity logic and just do a simple ilike search
+    // This will match any case variation of the area name
     
-    console.log("Searching for area:", formattedArea);
+    console.log("Searching for area:", area);
     
     const { data, error } = await supabase
       .from('JURIFY')
       .select('*')
-      .ilike('area', `%${formattedArea}%`) // Use case-insensitive search
+      .ilike('area', `%${area}%`) // Use simple case-insensitive search
       .order('sequencia', { ascending: true });
     
     if (error) {
@@ -81,7 +77,7 @@ export async function getEpisodesByArea(area: string): Promise<PodcastEpisode[]>
       throw error;
     }
 
-    console.log(`Found ${data?.length || 0} episodes for area ${formattedArea}`);
+    console.log(`Found ${data?.length || 0} episodes for area ${area}`);
     return formatEpisodes(ensureTagsAreArrays(data || []));
   } catch (error) {
     console.error(`Error in getEpisodesByArea for ${area}:`, error);
@@ -519,7 +515,7 @@ export async function getInProgressEpisodes(): Promise<PodcastEpisode[]> {
       .from('podcast_history')
       .select('episode_id, progress_percent, current_position')
       .eq('user_ip', userIp)
-      .or('progress_percent.gt.0,current_position.gt.0') // Changed to include all episodes with any progress
+      .or('progress_percent.gt.0,current_position.gt.0') // Include all episodes with any progress
       .lt('progress_percent', 100); // Keep only episodes that are not fully completed
     
     if (error) throw error;
@@ -540,7 +536,7 @@ export async function getInProgressEpisodes(): Promise<PodcastEpisode[]> {
     try {
       const progressData = getProgressData();
       const episodeIds = Object.keys(progressData).map(Number).filter(id => 
-        progressData[id].progress > 0 && progressData[id].progress < 100 || 
+        (progressData[id].progress > 0 && progressData[id].progress < 100) || 
         progressData[id].lastPosition > 0
       );
       

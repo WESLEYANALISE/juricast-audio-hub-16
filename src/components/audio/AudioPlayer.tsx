@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -5,12 +6,14 @@ import { useAudioPlayer } from '@/context/AudioPlayerContext';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
+
 interface AudioPlayerProps {
   src: string;
   title: string;
   thumbnail?: string;
   episodeId?: number;
 }
+
 const AudioPlayer: React.FC<AudioPlayerProps> = ({
   src,
   title,
@@ -29,6 +32,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
     setPlaybackRate,
     playNext
   } = useAudioPlayer();
+  
   const {
     isPlaying,
     volume,
@@ -37,6 +41,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
     duration,
     playbackRate
   } = state;
+  
   const [showPlaybackOptions, setShowPlaybackOptions] = useState(false);
   const [waveformData, setWaveformData] = useState<number[]>(Array(40).fill(0));
   const progressRef = useRef<HTMLDivElement>(null);
@@ -76,6 +81,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
       }
     };
   }, [isPlaying]);
+  
   const handlePlayPause = () => {
     if (isPlaying) {
       pause();
@@ -83,6 +89,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
       resume();
     }
   };
+  
   const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (progressRef.current) {
       const rect = progressRef.current.getBoundingClientRect();
@@ -90,16 +97,19 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
       seekTo(percent * duration);
     }
   };
+  
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newVolume = parseFloat(e.target.value);
     setVolume(newVolume);
   };
+  
   const formatTime = (time: number) => {
     if (isNaN(time)) return '00:00';
     const minutes = Math.floor(time / 60);
     const seconds = Math.floor(time % 60);
     return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   };
+  
   const handleDownload = () => {
     if (!src) return;
 
@@ -120,9 +130,19 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
 
   // Calculate progress percentage
   const progressPercentage = duration > 0 ? Math.round(currentTime / duration * 100) : 0;
+  
   const handleSkipEpisode = () => {
     playNext();
   };
+  
+  // Animation for next episode transition
+  const nextEpisodeAnimation = {
+    initial: { opacity: 0, y: 20 },
+    animate: { opacity: 1, y: 0 },
+    exit: { opacity: 0, y: -20 },
+    transition: { duration: 0.5 }
+  };
+  
   return <motion.div initial={{
     opacity: 0,
     y: 20
@@ -183,7 +203,12 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
           <div className="flex flex-col flex-grow">
             <div className="flex justify-between items-center mb-2">
               <h2 className="text-lg md:text-xl font-semibold text-center md:text-left line-clamp-2">{title}</h2>
-              <span className="text-juricast-accent px-0 py-0 my-0 font-extralight text-xs text-center">{progressPercentage}% concluído</span>
+              {/* Move the percentage to a small badge on mobile and desktop */}
+              {progressPercentage > 0 && (
+                <div className="px-2 py-0.5 bg-juricast-accent/10 rounded-full">
+                  <span className="text-xs text-juricast-accent font-medium">{progressPercentage}%</span>
+                </div>
+              )}
             </div>
             
             <div className="flex flex-col gap-4">
@@ -322,4 +347,5 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
       </div>
     </motion.div>;
 };
+
 export default AudioPlayer;

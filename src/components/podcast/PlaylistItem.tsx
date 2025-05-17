@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Play, Heart, Pause, Gavel, Book, Scale, File, Check } from 'lucide-react';
@@ -9,6 +8,7 @@ import { toggleFavorite } from '@/lib/podcast-service';
 import { OptimizedImage } from '@/components/ui/optimized-image';
 import { useAudioPlayer } from '@/context/AudioPlayerContext';
 import { useQueryClient } from '@tanstack/react-query';
+import { Progress } from '@/components/ui/progress';
 
 interface PlaylistItemProps {
   episode: PodcastEpisode;
@@ -16,6 +16,7 @@ interface PlaylistItemProps {
   isPlaying?: boolean;
   onPlay?: () => void;
   priority?: boolean;
+  showNewBadge?: boolean;
 }
 
 const PlaylistItem: React.FC<PlaylistItemProps> = ({ 
@@ -23,7 +24,8 @@ const PlaylistItem: React.FC<PlaylistItemProps> = ({
   index, 
   isPlaying = false,
   onPlay,
-  priority = false
+  priority = false,
+  showNewBadge = false // Only show NEW badge if specifically requested
 }) => {
   const audioPlayer = useAudioPlayer();
   const queryClient = useQueryClient();
@@ -175,23 +177,10 @@ const PlaylistItem: React.FC<PlaylistItemProps> = ({
               <Check size={12} className="text-white" />
             </div>
           )}
-          {isNew() && !isCompleted && (
+          {/* Only show NEW badge if explicitly requested through props */}
+          {showNewBadge && isNew() && !isCompleted && (
             <div className="absolute top-0 left-0 bg-juricast-accent p-1 rounded-br-md">
-              <span className="text-white text-[10px] font-bold">NEW</span>
-            </div>
-          )}
-          {/* Progress indicator - Shown as a small circle on the bottom right of the thumbnail */}
-          {episode.progresso > 0 && episode.progresso < 100 && (
-            <div className="absolute bottom-0 right-0 w-4 h-4 bg-juricast-background rounded-tl-md flex items-center justify-center" title={`${episode.progresso}% concluído`}>
-              <div className="w-3 h-3 rounded-full border border-juricast-accent flex items-center justify-center">
-                <div 
-                  className="bg-juricast-accent rounded-full" 
-                  style={{ 
-                    width: `${Math.max(1, Math.min(11, episode.progresso / 10))}px`, 
-                    height: `${Math.max(1, Math.min(11, episode.progresso / 10))}px` 
-                  }}
-                />
-              </div>
+              <span className="text-white text-[10px] font-bold">NOVO</span>
             </div>
           )}
         </div>
@@ -202,6 +191,13 @@ const PlaylistItem: React.FC<PlaylistItemProps> = ({
             {getAreaIcon()}
             <span className="truncate">{episode.area} - {episode.tema}</span>
           </div>
+          
+          {/* Add progress bar for episodes with progress */}
+          {episode.progresso > 0 && (
+            <div className="mt-1 w-full">
+              <Progress value={episode.progresso} className="h-1" />
+            </div>
+          )}
         </div>
         
         <motion.button

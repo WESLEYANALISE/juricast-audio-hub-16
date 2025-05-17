@@ -1,142 +1,189 @@
 
 import React from 'react';
-import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { getRecentEpisodes } from '@/lib/podcast-service';
 import { PodcastEpisode } from '@/lib/types';
-import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Link } from 'react-router-dom';
+import { useAudioPlayer } from '@/context/AudioPlayerContext';
+import { Play, Pause, Heart, CheckCircle } from 'lucide-react';
+import { toggleFavorite } from '@/lib/podcast-service';
+import { useQueryClient } from '@tanstack/react-query';
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import { OptimizedImage } from '@/components/ui/optimized-image';
+import { cn } from '@/lib/utils';
+import { Progress } from '@/components/ui/progress';
 
-const NewEpisodesCarousel: React.FC = () => {
-  const { data: recentEpisodes = [], isLoading } = useQuery({
-    queryKey: ['recentEpisodes'],
-    queryFn: getRecentEpisodes,
-    staleTime: 5 * 60 * 1000, // 5 minutes cache
-    refetchOnMount: true,
-  });
-
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1
-      }
-    }
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, x: 20 },
-    visible: { opacity: 1, x: 0 }
-  };
-
-  return (
-    <motion.div
-      className="overflow-x-auto pb-4"
-      variants={containerVariants}
-    >
-      <div className="flex space-x-4 min-w-max">
-        {isLoading 
-          ? [...Array(4)].map((_, i) => (
-              <EpisodeCardSkeleton key={i} />
-            ))
-          : recentEpisodes.slice(0, 5).map((episode) => (
-              <motion.div
-                key={episode.id}
-                className="flex-shrink-0 w-64"
-                variants={itemVariants}
-                whileHover={{ scale: 1.05, transition: { duration: 0.2 } }}
-              >
-                <EpisodeCard episode={episode} />
-              </motion.div>
-            ))
-        }
-      </div>
-    </motion.div>
-  );
-};
-
-interface EpisodeCardProps {
-  episode: PodcastEpisode;
-}
-
-const EpisodeCard: React.FC<EpisodeCardProps> = ({ episode }) => {
-  // Check if episode is new (published in the last 7 days)
-  const isNew = () => {
-    if (!episode.data_publicacao) return false;
+// Helper to check if episode is new (published in last 7 days)
+const isEpisodeNew = (episode: PodcastEpisode) => {
+  const date = episode.data_publicacao || episode.data;
+  if (!date) return false;
+  
+  try {
+    // First try to parse as ISO date
+    const publishDate = new Date(date);
+    const currentDate = new Date();
     
-    try {
-      // First try to parse as ISO date
-      const publishDate = new Date(episode.data_publicacao);
-      const currentDate = new Date();
-      
-      // Check if valid date object was created
-      if (isNaN(publishDate.getTime())) {
-        // Try to parse BR format (dd/mm/yyyy)
-        const parts = episode.data_publicacao.split('/');
-        if (parts.length === 3) {
-          const day = parseInt(parts[0], 10);
-          const month = parseInt(parts[1], 10) - 1;
-          const year = parseInt(parts[2], 10);
-          const parsedDate = new Date(year, month, day);
-          
-          const diffTime = currentDate.getTime() - parsedDate.getTime();
-          const diffDays = diffTime / (1000 * 3600 * 24);
-          return diffDays <= 7;
-        }
-      } else {
-        const diffTime = currentDate.getTime() - publishDate.getTime();
+    // Check if valid date object was created
+    if (isNaN(publishDate.getTime())) {
+      // Try to parse BR format (dd/mm/yyyy)
+      const parts = date.split('/');
+      if (parts.length === 3) {
+        const day = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10) - 1;
+        const year = parseInt(parts[2], 10);
+        const parsedDate = new Date(year, month, day);
+        
+        const diffTime = currentDate.getTime() - parsedDate.getTime();
         const diffDays = diffTime / (1000 * 3600 * 24);
         return diffDays <= 7;
       }
-    } catch (error) {
-      console.error("Error parsing date:", error);
+    } else {
+      const diffTime = currentDate.getTime() - publishDate.getTime();
+      const diffDays = diffTime / (1000 * 3600 * 24);
+      return diffDays <= 7;
     }
+  } catch (error) {
+    console.error("Error parsing date:", error);
+  }
+  
+  return false;
+};
+
+const NewEpisodesCarousel = () => {
+  const queryClient = useQueryClient();
+  const { data: episodes, isLoading } = useQuery({
+    queryKey: ['recentEpisodes'],
+    queryFn: getRecentEpisodes,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+  
+  const { play, state } = useAudioPlayer();
+  
+  const handlePlay = (episode: PodcastEpisode) => {
+    play(episode);
+  };
+  
+  const handleToggleFavorite = async (e: React.MouseEvent, episodeId: number) => {
+    e.preventDefault();
+    e.stopPropagation();
     
-    return false;
+    try {
+      await toggleFavorite(episodeId);
+      // Refresh data
+      queryClient.invalidateQueries({ queryKey: ['favoriteEpisodes'] });
+      queryClient.invalidateQueries({ queryKey: ['episode', episodeId] });
+      queryClient.invalidateQueries({ queryKey: ['recentEpisodes'] });
+    } catch (error) {
+      console.error("Error toggling favorite:", error);
+    }
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex space-x-4 overflow-x-auto py-4">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="flex-shrink-0 w-72 h-48">
+            <Skeleton className="w-full h-full rounded-lg" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (!episodes || episodes.length === 0) {
+    return <p className="text-center text-juricast-muted">Nenhum episódio recente encontrado</p>;
+  }
+
   return (
-    <Link 
-      to={`/podcast/${episode.id}`}
-      className="block bg-juricast-card rounded-lg overflow-hidden transform transition-transform duration-300 hover:shadow-lg h-full"
+    <Carousel
+      opts={{
+        align: "start",
+        loop: true,
+      }}
+      className="w-full"
     >
-      <div className="relative h-32">
-        <OptimizedImage
-          src={episode.imagem_miniatura}
-          alt={episode.titulo}
-          className="w-full h-full"
-          aspectRatio="aspect-video"
-          fetchPriority="high"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
-        <div className="absolute bottom-2 left-2 right-2">
-          {isNew() && (
-            <span className="inline-block bg-juricast-accent/80 text-white text-xs px-2 py-1 rounded-full">Novo</span>
-          )}
-        </div>
-      </div>
-      <div className="p-3">
-        <h3 className="font-medium text-sm line-clamp-2 mb-1">{episode.titulo}</h3>
-        <p className="text-xs text-juricast-muted">{episode.area}</p>
-      </div>
-    </Link>
+      <CarouselContent className="-ml-4">
+        {episodes.map((episode, index) => (
+          <CarouselItem key={episode.id} className="pl-4 md:basis-1/2 lg:basis-1/3">
+            <div className="p-1">
+              <Link 
+                to={`/podcast/${episode.id}`} 
+                className="block overflow-hidden rounded-lg relative group"
+              >
+                <div className="aspect-[16/9] relative overflow-hidden rounded-lg">
+                  <OptimizedImage
+                    src={episode.imagem_miniatura}
+                    alt={episode.titulo}
+                    className="w-full h-full object-cover transition-transform group-hover:scale-105 duration-300"
+                    priority={index < 3}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+                  
+                  {/* Show NEW badge on large cards if episode is recent */}
+                  {isEpisodeNew(episode) && (
+                    <div className="absolute top-2 left-2 bg-juricast-accent text-white font-bold text-xs px-2 py-1 rounded-md z-10 shadow-lg">
+                      Novo
+                    </div>
+                  )}
+                  
+                  {/* Show completion status */}
+                  {episode.progresso === 100 && (
+                    <div className="absolute top-2 right-2 z-10">
+                      <CheckCircle className="text-green-500 drop-shadow-md" size={20} />
+                    </div>
+                  )}
+                  
+                  <div className="absolute bottom-0 left-0 right-0 p-3">
+                    <h3 className="text-white font-semibold text-base line-clamp-2 mb-1">{episode.titulo}</h3>
+                    <div className="flex justify-between items-center">
+                      <p className="text-juricast-accent text-xs">{episode.area}</p>
+                      <div className="flex items-center gap-2">
+                        <motion.button
+                          whileTap={{ scale: 0.9 }}
+                          className={cn(
+                            "p-1.5 rounded-full bg-white/10 backdrop-blur-sm",
+                            episode.favorito ? "text-juricast-accent" : "text-white"
+                          )}
+                          onClick={(e) => handleToggleFavorite(e, episode.id)}
+                        >
+                          <Heart size={16} fill={episode.favorito ? "currentColor" : "none"} />
+                        </motion.button>
+                        <motion.button
+                          whileTap={{ scale: 0.9 }}
+                          className="p-1.5 rounded-full bg-juricast-accent text-white"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handlePlay(episode);
+                          }}
+                        >
+                          {state.isPlaying && state.currentEpisode?.id === episode.id ? (
+                            <Pause size={16} />
+                          ) : (
+                            <Play size={16} className="ml-0.5" />
+                          )}
+                        </motion.button>
+                      </div>
+                    </div>
+                    
+                    {/* Add progress indicator for in-progress episodes */}
+                    {episode.progresso > 0 && episode.progresso < 100 && (
+                      <div className="mt-2">
+                        <Progress value={episode.progresso} className="h-1 bg-white/20" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </Link>
+            </div>
+          </CarouselItem>
+        ))}
+      </CarouselContent>
+      <CarouselPrevious className="hidden md:flex" />
+      <CarouselNext className="hidden md:flex" />
+    </Carousel>
   );
 };
 
-const EpisodeCardSkeleton: React.FC = () => {
-  return (
-    <div className="flex-shrink-0 w-64">
-      <div className="bg-juricast-card rounded-lg overflow-hidden h-full">
-        <div className="h-32 w-full bg-juricast-card/50 animate-pulse" />
-        <div className="p-3 space-y-2">
-          <div className="h-4 w-full bg-juricast-card/50 animate-pulse rounded" />
-          <div className="h-3 w-2/3 bg-juricast-card/50 animate-pulse rounded" />
-        </div>
-      </div>
-    </div>
-  );
-};
-
-export default React.memo(NewEpisodesCarousel);
+export default NewEpisodesCarousel;

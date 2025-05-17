@@ -254,6 +254,13 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
                   queryClient.invalidateQueries({ queryKey: ['inProgressEpisodes'] });
                 }
               }
+              
+              // If episode is almost complete (>= 97%), mark it as completely listened
+              if (progressPercent >= 97) {
+                saveEpisodeProgress(state.currentEpisode.id, 100, duration);
+                queryClient.invalidateQueries({ queryKey: ['inProgressEpisodes'] });
+                queryClient.invalidateQueries({ queryKey: ['completedEpisodes'] });
+              }
             }
           }, 2000); // Save after 2 seconds of stable playback
         }
@@ -293,8 +300,7 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
                     </div>
                   </div>
                 ),
-                variant: "default",
-                duration: 5000
+                variant: "default"
               });
               
               // Play next episode
@@ -317,7 +323,7 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
             toast({
               title: "Próximo episódio",
               description: nextEpisode.titulo,
-              variant: "default",
+              variant: "default"
             });
           } else {
             dispatch({ type: 'PAUSE' });
