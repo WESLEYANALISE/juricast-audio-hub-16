@@ -52,7 +52,7 @@ function ensureTagsAreArrays(episodes: any[]): SupabaseEpisode[] {
     tag: Array.isArray(episode.tag) ? episode.tag : episode.tag ? [episode.tag] : [],
     comentarios: episode.comentarios || 0,
     curtidas: episode.curtidas || 0,
-    data_publicacao: episode.data_publicacao || new Date().toLocaleDateString('pt-BR')
+    data_publicacao: episode.data_publicacao || new Date().toISOString().split('T')[0]
   }));
 }
 
@@ -620,7 +620,7 @@ async function formatEpisodes(episodes: SupabaseEpisode[]): Promise<PodcastEpiso
       favorito: isFavorite,
       comentarios: episode.comentarios || 0, 
       curtidas: episode.curtidas || 0,
-      data_publicacao: episode.data_publicacao || new Date().toLocaleDateString('pt-BR'),
+      data_publicacao: episode.data_publicacao || new Date().toISOString().split('T')[0],
     } as PodcastEpisode);
   }
   
