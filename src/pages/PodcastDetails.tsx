@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import MainLayout from '@/components/layout/MainLayout';
 import AudioPlayer from '@/components/audio/AudioPlayer';
@@ -13,12 +13,14 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import RelatedEpisodes from '@/components/podcast/RelatedEpisodes';
 import { PodcastEpisode } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
+
 const PodcastDetails = () => {
   const {
     id
   } = useParams<{
     id: string;
   }>();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const {
     state,
@@ -27,6 +29,7 @@ const PodcastDetails = () => {
   const isMobile = useIsMobile();
   const episodeId = parseInt(id || '0');
   const [imageLoaded, setImageLoaded] = useState(false);
+  
   const {
     data: episode,
     isLoading,
@@ -54,6 +57,7 @@ const PodcastDetails = () => {
   useEffect(() => {
     saveUserIP();
   }, []);
+  
   useEffect(() => {
     if (episode) {
       setIsFavorite(episode.favorito || false);
@@ -66,6 +70,7 @@ const PodcastDetails = () => {
       play(episode);
     }
   }, [episode, play, state.currentEpisode?.id]);
+  
   const handleToggleFavorite = async () => {
     if (!episode) return;
     try {
@@ -94,6 +99,7 @@ const PodcastDetails = () => {
       });
     }
   };
+  
   const handleShareEpisode = () => {
     if (!episode) return;
 
@@ -116,15 +122,22 @@ const PodcastDetails = () => {
       copyToClipboard();
     }
   };
+  
   const copyToClipboard = () => {
     navigator.clipboard.writeText(window.location.href).then(() => toast({
       title: "Link copiado",
       description: "O link do episódio foi copiado para a área de transferência."
     })).catch(err => console.error("Failed to copy:", err));
   };
+  
   const handleImageLoad = () => {
     setImageLoaded(true);
   };
+  
+  const handleNavigateBack = () => {
+    navigate(-1);
+  };
+  
   if (isLoading) {
     return <MainLayout>
       <div className="animate-pulse space-y-8 px-4 md:px-0 max-w-5xl mx-auto">
@@ -136,6 +149,7 @@ const PodcastDetails = () => {
       </div>
     </MainLayout>;
   }
+  
   if (!episode) {
     return <MainLayout>
       <div className="flex flex-col items-center justify-center h-[60vh] px-4 md:px-0 max-w-5xl mx-auto">
@@ -146,6 +160,7 @@ const PodcastDetails = () => {
       </div>
     </MainLayout>;
   }
+  
   const fadeIn = {
     hidden: {
       opacity: 0,
@@ -159,6 +174,7 @@ const PodcastDetails = () => {
       }
     }
   };
+  
   return <MainLayout>
       <motion.div initial="hidden" animate="visible" variants={fadeIn} className="px-4 md:px-0 max-w-5xl mx-auto">
         <div className="mb-6 flex items-center justify-between">
@@ -168,9 +184,13 @@ const PodcastDetails = () => {
           }} whileTap={{
             scale: 0.9
           }}>
-              <Link to="/" className="mr-4 p-3 md:p-4 bg-juricast-card hover:bg-juricast-accent hover:text-white rounded-full transition-all flex items-center justify-center shadow-md" aria-label="Voltar">
+              <button 
+                onClick={handleNavigateBack}
+                className="mr-4 p-3 md:p-4 bg-juricast-card hover:bg-juricast-accent hover:text-white rounded-full transition-all flex items-center justify-center shadow-md" 
+                aria-label="Voltar"
+              >
                 <ArrowLeft size={isMobile ? 20 : 24} />
-              </Link>
+              </button>
             </motion.div>
             <h1 className={cn("font-bold truncate", isMobile ? "text-xl" : "text-2xl")}>{episode.titulo}</h1>
           </div>
@@ -281,4 +301,5 @@ const PodcastDetails = () => {
       </motion.div>
     </MainLayout>;
 };
+
 export default PodcastDetails;

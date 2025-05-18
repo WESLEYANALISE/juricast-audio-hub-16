@@ -140,12 +140,14 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
   const progressTrackingInterval = useRef<number | null>(null);
   const progressSaveTimeout = useRef<number | null>(null);
   const themeEpisodes = useRef<PodcastEpisode[]>([]);
+  const playAttemptTimeout = useRef<number | null>(null);
 
   // Initialize audio element only once in the app lifecycle
   useEffect(() => {
     // Create the audio element only if it doesn't exist
     if (!globalAudioElement) {
       globalAudioElement = new Audio();
+      globalAudioElement.preload = "auto";
       console.log('Creating new global audio element');
     }
     
@@ -156,6 +158,10 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
     return () => {
       if (progressTrackingInterval.current) {
         window.clearInterval(progressTrackingInterval.current);
+      }
+      
+      if (playAttemptTimeout.current) {
+        window.clearTimeout(playAttemptTimeout.current);
       }
     };
   }, []);
@@ -331,15 +337,31 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
         }
       };
       
+      const handleError = (e: ErrorEvent) => {
+        console.error('Audio element error:', e);
+        toast({
+          title: "Erro de reprodução",
+          description: "Ocorreu um erro ao reproduzir o áudio. Tentando novamente...",
+          variant: "destructive"
+        });
+        
+        // Try to reload the audio source
+        if (audioRef.current) {
+          audioRef.current.load();
+        }
+      };
+      
       audioRef.current.addEventListener('loadedmetadata', handleLoadedMetadata);
       audioRef.current.addEventListener('timeupdate', handleTimeUpdate);
       audioRef.current.addEventListener('ended', handleEnded);
+      audioRef.current.addEventListener('error', handleError as EventListener);
       
       return () => {
         if (audioRef.current) {
           audioRef.current.removeEventListener('loadedmetadata', handleLoadedMetadata);
           audioRef.current.removeEventListener('timeupdate', handleTimeUpdate);
           audioRef.current.removeEventListener('ended', handleEnded);
+          audioRef.current.removeEventListener('error', handleError as EventListener);
         }
         
         if (progressSaveTimeout.current) {
@@ -349,18 +371,52 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
     }
   }, [state.currentEpisode, queryClient]);
 
-  // Handle play/pause
+  // Handle play/pause with better error handling and retries
   useEffect(() => {
     if (audioRef.current) {
       if (state.isPlaying) {
-        const playPromise = audioRef.current.play();
-        if (playPromise !== undefined) {
-          playPromise.catch((error) => {
-            console.error('Error playing audio:', error);
-            dispatch({ type: 'PAUSE' });
-          });
+        // Clear any existing timeout
+        if (playAttemptTimeout.current) {
+          window.clearTimeout(playAttemptTimeout.current);
         }
+        
+        const attemptPlay = () => {
+          if (!audioRef.current) return;
+          
+          console.log('Attempting to play audio...');
+          const playPromise = audioRef.current.play();
+          
+          if (playPromise !== undefined) {
+            playPromise.then(() => {
+              console.log('Audio playing successfully');
+            }).catch((error) => {
+              console.error('Error playing audio:', error);
+              
+              // If autoplay is prevented by browser policy, notify user and set up another attempt
+              if (error.name === 'NotAllowedError') {
+                toast({
+                  title: "Reprodução automática bloqueada",
+                  description: "Clique novamente para reproduzir o áudio."
+                });
+              } else {
+                // For other errors, try again after a short delay
+                playAttemptTimeout.current = window.setTimeout(() => {
+                  console.log('Retrying play...');
+                  if (state.isPlaying && audioRef.current) {
+                    attemptPlay();
+                  }
+                }, 1000);
+              }
+            });
+          }
+        };
+        
+        attemptPlay();
       } else {
+        // Make sure we clear any pending play attempts when pausing
+        if (playAttemptTimeout.current) {
+          window.clearTimeout(playAttemptTimeout.current);
+        }
         audioRef.current.pause();
       }
     }
@@ -427,7 +483,17 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
 
   // Context methods
   const play = (episode: PodcastEpisode) => {
+    // If trying to play the same episode that's already loaded but paused, just resume
+    if (state.currentEpisode?.id === episode.id && !state.isPlaying && audioRef.current) {
+      console.log('Resume playing current episode');
+      dispatch({ type: 'RESUME' });
+      return;
+    }
+    
+    // Otherwise, set up the new episode
+    console.log('Playing new episode:', episode.titulo);
     dispatch({ type: 'PLAY', payload: episode });
+    
     // Notify with toast
     if (episode.titulo) {
       toast({
@@ -438,14 +504,18 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
     }
     
     // Invalidate queries to ensure UI is up-to-date
-    queryClient.invalidateQueries({ queryKey: ['inProgressEpisodes'] });
+    queryClient.invalidateQueries({
+      queryKey: ['inProgressEpisodes']
+    });
   };
 
   const pause = () => {
+    console.log('Pausing audio');
     dispatch({ type: 'PAUSE' });
   };
 
   const resume = () => {
+    console.log('Resuming audio');
     dispatch({ type: 'RESUME' });
   };
 

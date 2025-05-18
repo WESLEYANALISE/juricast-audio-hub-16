@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -46,6 +45,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
   const [waveformData, setWaveformData] = useState<number[]>(Array(40).fill(0));
   const progressRef = useRef<HTMLDivElement>(null);
   const waveformInterval = useRef<number | null>(null);
+  const [playClickCount, setPlayClickCount] = useState(0);
 
   // Generate professional waveform visualization
   useEffect(() => {
@@ -83,9 +83,15 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
   }, [isPlaying]);
   
   const handlePlayPause = () => {
+    // Track click count to help with debugging and user experience
+    setPlayClickCount(prev => prev + 1);
+    console.log(`Play/Pause button clicked (${playClickCount + 1})`);
+    
     if (isPlaying) {
+      console.log('Attempting to pause');
       pause();
     } else {
+      console.log('Attempting to resume');
       resume();
     }
   };
@@ -132,6 +138,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
   const progressPercentage = duration > 0 ? Math.round(currentTime / duration * 100) : 0;
   
   const handleSkipEpisode = () => {
+    console.log('Skipping to next episode');
     playNext();
   };
   
@@ -237,11 +244,13 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
                     <SkipBack size={18} />
                   </motion.button>
                   
-                  <motion.button onClick={handlePlayPause} className="player-button w-12 h-12 md:w-14 md:h-14 flex items-center justify-center rounded-full bg-juricast-accent text-white hover:bg-juricast-accent/90 shadow-md" whileHover={{
-                  scale: 1.05
-                }} whileTap={{
-                  scale: 0.95
-                }}>
+                  <motion.button 
+                    onClick={handlePlayPause} 
+                    className="player-button w-12 h-12 md:w-14 md:h-14 flex items-center justify-center rounded-full bg-juricast-accent text-white hover:bg-juricast-accent/90 shadow-md"
+                    whileHover={{scale: 1.05}}
+                    whileTap={{scale: 0.95}}
+                    title={isPlaying ? "Pausar" : "Reproduzir"}
+                  >
                     {isPlaying ? <Pause size={24} /> : <Play size={24} className="ml-1" />}
                   </motion.button>
                   
