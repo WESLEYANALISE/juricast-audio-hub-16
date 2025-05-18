@@ -1,3 +1,4 @@
+
 // Fix the formatEpisodes function at the bottom of the file to handle proper types
 
 import { supabase } from "@/integrations/supabase/client";
@@ -147,9 +148,9 @@ export async function getEpisodeById(id: number): Promise<PodcastEpisode | null>
       tag: Array.isArray(data.tag) ? data.tag : data.tag ? [data.tag] : [],
       progresso: progressData?.progress || 0,
       favorito: isFavorite,
-      comentarios: data.comentarios || 0,
-      curtidas: data.curtidas || 0,
-      data_publicacao: data.data_publicacao || new Date().toLocaleDateString('pt-BR'),
+      comentarios: 0, // Default value for JURIFY table
+      curtidas: 0, // Default value for JURIFY table
+      data_publicacao: data.data || new Date().toLocaleDateString('pt-BR'),
     };
     
     return episode as PodcastEpisode;
@@ -205,16 +206,21 @@ export async function getThemesByArea(area: string): Promise<ThemeCard[]> {
       .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
       .join(' ');
     
+    console.log("Getting themes for area:", formattedArea);
+    
+    // Changed to use ilike for case-insensitive matching
     const { data, error } = await supabase
       .from('JURIFY')
       .select('tema, area')
-      .eq('area', formattedArea);
+      .ilike('area', `%${formattedArea}%`);
     
     if (error) {
       console.error(`Error fetching themes for area ${area}:`, error);
       throw error;
     }
 
+    console.log("Raw theme data:", data);
+    
     const themesMap = new Map<string, {count: number, area: string}>();
     
     // Count episodes per theme
@@ -227,6 +233,8 @@ export async function getThemesByArea(area: string): Promise<ThemeCard[]> {
         });
       }
     });
+    
+    console.log("Themes map:", Array.from(themesMap.entries()));
     
     // Convert to array of theme cards
     const themes: ThemeCard[] = Array.from(themesMap.entries()).map(([name, info]) => ({
@@ -662,9 +670,10 @@ async function formatEpisodes(episodes: SupabaseEpisode[]): Promise<PodcastEpiso
       tag: Array.isArray(episode.tag) ? episode.tag : episode.tag ? [episode.tag] : [],
       progresso: 0,
       favorito: false,
-      comentarios: episode.comentarios || 0,
-      curtidas: episode.curtidas || 0,
+      comentarios: 0,
+      curtidas: 0,
       data_publicacao: episode.data_publicacao || episode.data || new Date().toISOString().split('T')[0],
     } as PodcastEpisode));
   }
 }
+
