@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Play, Heart, Pause, Gavel, Book, Scale, File, Check } from 'lucide-react';
@@ -9,6 +10,7 @@ import { OptimizedImage } from '@/components/ui/optimized-image';
 import { useAudioPlayer } from '@/context/AudioPlayerContext';
 import { useQueryClient } from '@tanstack/react-query';
 import { Progress } from '@/components/ui/progress';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface PlaylistItemProps {
   episode: PodcastEpisode;
@@ -25,10 +27,11 @@ const PlaylistItem: React.FC<PlaylistItemProps> = ({
   isPlaying = false,
   onPlay,
   priority = false,
-  showNewBadge = false // Only show NEW badge if specifically requested
+  showNewBadge = false
 }) => {
   const audioPlayer = useAudioPlayer();
   const queryClient = useQueryClient();
+  const isMobile = useIsMobile();
   const isCurrentlyPlaying = isPlaying || (audioPlayer.state.currentEpisode?.id === episode.id && audioPlayer.state.isPlaying);
 
   const handleToggleFavorite = async (e: React.MouseEvent) => {
@@ -139,6 +142,9 @@ const PlaylistItem: React.FC<PlaylistItemProps> = ({
     }
   };
 
+  // Get episode sequence number if available
+  const sequenceNumber = episode.sequencia || '';
+
   return (
     <motion.div
       variants={itemVariants}
@@ -150,7 +156,7 @@ const PlaylistItem: React.FC<PlaylistItemProps> = ({
     >
       <Link to={`/podcast/${episode.id}`} className="flex items-center p-3">
         <div className="w-10 text-center text-juricast-muted mr-3 hidden sm:block">
-          {index}
+          {sequenceNumber || index}
         </div>
         
         <div className="h-12 w-12 relative rounded-md overflow-hidden flex-shrink-0">
@@ -183,13 +189,27 @@ const PlaylistItem: React.FC<PlaylistItemProps> = ({
               <span className="text-white text-[10px] font-bold">NOVO</span>
             </div>
           )}
+          {/* Show sequence number on mobile */}
+          {isMobile && sequenceNumber && (
+            <div className="absolute bottom-0 left-0 bg-black/70 p-1 rounded-tr-md">
+              <span className="text-white text-[10px] font-bold">#{sequenceNumber}</span>
+            </div>
+          )}
         </div>
         
         <div className="flex-1 ml-4 mr-2 overflow-hidden">
-          <h3 className="font-medium text-sm line-clamp-2 sm:line-clamp-1">{episode.titulo}</h3>
-          <div className="flex items-center text-juricast-accent text-xs gap-1">
-            {getAreaIcon()}
-            <span className="truncate">{episode.area} - {episode.tema}</span>
+          {/* Better title layout for mobile */}
+          <div className="flex flex-col">
+            <h3 className={cn(
+              "font-medium text-sm truncate max-w-full",
+              isMobile ? "line-clamp-2" : "line-clamp-1"
+            )}>
+              {episode.titulo}
+            </h3>
+            <div className="flex items-center text-juricast-accent text-xs gap-1 mt-0.5">
+              {getAreaIcon()}
+              <span className="truncate max-w-[120px] sm:max-w-full">{episode.area} - {episode.tema}</span>
+            </div>
           </div>
           
           {/* Add progress bar for episodes with progress */}
@@ -204,7 +224,7 @@ const PlaylistItem: React.FC<PlaylistItemProps> = ({
           whileHover={{ scale: 1.2 }}
           whileTap={{ scale: 0.9 }}
           className={cn(
-            "p-2 rounded-full", 
+            "p-2 rounded-full flex-shrink-0", 
             episode.favorito ? "text-juricast-accent" : "text-juricast-muted"
           )}
           onClick={handleToggleFavorite}

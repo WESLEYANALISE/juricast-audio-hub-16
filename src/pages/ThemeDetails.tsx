@@ -33,7 +33,19 @@ const ThemeDetails = () => {
     }
   };
 
-  console.log('Theme details:', { theme, area, episodes, isLoading });
+  // Sort episodes by sequence if available
+  const sortedEpisodes = [...episodes].sort((a, b) => {
+    // If both have sequence, sort numerically
+    if (a.sequencia && b.sequencia) {
+      return parseInt(a.sequencia) - parseInt(b.sequencia);
+    }
+    // If only a has sequence, a comes first
+    if (a.sequencia) return -1;
+    // If only b has sequence, b comes first
+    if (b.sequencia) return 1;
+    // Default to ID sorting as fallback
+    return a.id - b.id;
+  });
 
   return (
     <MainLayout>
@@ -62,7 +74,7 @@ const ThemeDetails = () => {
             initial="hidden"
             animate="visible"
           >
-            {episodes.map((episode, index) => (
+            {sortedEpisodes.map((episode, index) => (
               <PlaylistItem
                 key={episode.id}
                 episode={episode}
