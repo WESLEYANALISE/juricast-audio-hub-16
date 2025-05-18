@@ -1,16 +1,19 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Search, Home, Heart, Clock, List, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getAllAreas } from '@/lib/podcast-service';
 import { AreaCard } from '@/lib/types';
+
 const TopNavigation = () => {
   const [areas, setAreas] = useState<AreaCard[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isSearchActive, setIsSearchActive] = useState<boolean>(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const path = location.pathname;
+  
   useEffect(() => {
     const fetchAreas = async () => {
       const areaData = await getAllAreas();
@@ -18,21 +21,26 @@ const TopNavigation = () => {
     };
     fetchAreas();
   }, []);
+  
   const toggleSearch = () => {
     setIsSearchActive(!isSearchActive);
     if (isSearchActive) {
       setSearchQuery('');
     }
   };
+  
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
   };
+  
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      window.location.href = `/busca?q=${encodeURIComponent(searchQuery)}`;
+      navigate(`/busca?q=${encodeURIComponent(searchQuery.trim())}`);
+      setIsSearchActive(false);
     }
   };
+  
   return <div className="sticky top-0 z-40 bg-gradient-to-b from-juricast-background to-juricast-background/80 backdrop-blur-sm py-2">
       <div className="flex flex-col">
         <div className="flex justify-between items-center px-4 py-2">
@@ -94,6 +102,7 @@ const TopNavigation = () => {
       </div>
     </div>;
 };
+
 const MainNavigation = ({
   path
 }: {
@@ -152,6 +161,7 @@ const MainNavigation = ({
       </motion.div>
     </div>;
 };
+
 const CategoryNav = ({
   areas
 }: {
@@ -170,4 +180,5 @@ const CategoryNav = ({
       </div>
     </div>;
 };
+
 export default TopNavigation;

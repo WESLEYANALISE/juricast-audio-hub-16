@@ -23,11 +23,12 @@ const SearchResults = () => {
       const query = searchQuery.toLowerCase();
       const filteredEpisodes = allEpisodes.filter(episode => {
         return (
-          episode.titulo.toLowerCase().includes(query) ||
-          episode.descricao.toLowerCase().includes(query) ||
-          episode.area.toLowerCase().includes(query) ||
-          episode.tema.toLowerCase().includes(query) ||
-          (episode.tag && episode.tag.some(tag => tag.toLowerCase().includes(query)))
+          (episode.titulo && episode.titulo.toLowerCase().includes(query)) ||
+          (episode.descricao && episode.descricao.toLowerCase().includes(query)) ||
+          (episode.area && episode.area.toLowerCase().includes(query)) ||
+          (episode.tema && episode.tema.toLowerCase().includes(query)) ||
+          (episode.tag && Array.isArray(episode.tag) && 
+            episode.tag.some(tag => tag && tag.toLowerCase().includes(query)))
         );
       });
       
